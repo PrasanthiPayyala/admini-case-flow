@@ -36,9 +36,10 @@ export default function CaseDetails() {
               {[
                 ["Case ID", caseData.id],
                 ["Case Number", caseData.caseNumber],
-                ["Court", caseData.court],
-                ["Court Type", caseData.courtType],
                 ["Case Type", caseData.caseType],
+                ["Court Name", caseData.court],
+                ["Court Type", caseData.courtType],
+                ["Mandal", caseData.mandal],
                 ["Department", caseData.department],
                 ["Filing Date", caseData.filingDate],
                 ["Assigned Officer", caseData.assignedOfficer],
@@ -61,6 +62,18 @@ export default function CaseDetails() {
               <div>
                 <p className="text-xs text-muted-foreground mb-0.5">Respondent</p>
                 <p className="font-medium">{caseData.respondent}</p>
+              </div>
+              <div className="col-span-2">
+                <p className="text-xs text-muted-foreground mb-1">Co-Respondent(s)</p>
+                {caseData.coRespondents.length > 0 ? (
+                  <ul className="space-y-0.5">
+                    {caseData.coRespondents.map((cr, i) => (
+                      <li key={i} className="font-medium text-sm">{i + 1}. {cr}</li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="text-muted-foreground text-sm">None</p>
+                )}
               </div>
               <div>
                 <p className="text-xs text-muted-foreground mb-0.5">Advocate</p>
@@ -117,6 +130,14 @@ export default function CaseDetails() {
             <div className="flex items-center justify-between">
               <span className="text-xs text-muted-foreground">Priority</span>
               <StatusBadge value={caseData.priority} type="priority" />
+            </div>
+            <div className="border-t border-border pt-3">
+              <p className="text-xs text-muted-foreground mb-0.5">Case Type</p>
+              <p className="text-sm font-medium">{caseData.caseType}</p>
+            </div>
+            <div>
+              <p className="text-xs text-muted-foreground mb-0.5">Mandal</p>
+              <p className="text-sm font-medium">{caseData.mandal}</p>
             </div>
             <div className="border-t border-border pt-3">
               <p className="text-xs text-muted-foreground mb-0.5">Last Hearing</p>

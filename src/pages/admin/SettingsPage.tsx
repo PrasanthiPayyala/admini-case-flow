@@ -4,7 +4,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import { Shield, Database, Bell, Server } from "lucide-react";
+import { Shield, Bell, Server } from "lucide-react";
+import { caseTypes, mandals, courtNames } from "@/data/sampleData";
 
 export default function SettingsPage() {
   return (
@@ -29,7 +30,49 @@ export default function SettingsPage() {
           <Button variant="outline" size="sm" className="mt-3 text-xs">+ Add Department</Button>
         </div>
 
-        {/* Courts */}
+        {/* Case Types Master */}
+        <div className="govt-card p-5">
+          <h3 className="text-sm font-semibold text-foreground mb-4">Case Types</h3>
+          <div className="space-y-2 text-sm">
+            {caseTypes.map(ct => (
+              <div key={ct} className="flex items-center justify-between py-2 border-b border-border last:border-0">
+                <span>{ct}</span>
+                <Button variant="ghost" size="sm" className="text-xs h-7">Edit</Button>
+              </div>
+            ))}
+          </div>
+          <Button variant="outline" size="sm" className="mt-3 text-xs">+ Add Case Type</Button>
+        </div>
+
+        {/* Court Names Master */}
+        <div className="govt-card p-5">
+          <h3 className="text-sm font-semibold text-foreground mb-4">Court Names</h3>
+          <div className="space-y-2 text-sm">
+            {courtNames.map(c => (
+              <div key={c} className="flex items-center justify-between py-2 border-b border-border last:border-0">
+                <span>{c}</span>
+                <Button variant="ghost" size="sm" className="text-xs h-7">Edit</Button>
+              </div>
+            ))}
+          </div>
+          <Button variant="outline" size="sm" className="mt-3 text-xs">+ Add Court</Button>
+        </div>
+
+        {/* Mandals Master */}
+        <div className="govt-card p-5">
+          <h3 className="text-sm font-semibold text-foreground mb-4">Mandals</h3>
+          <div className="grid grid-cols-2 gap-x-8 text-sm">
+            {mandals.map(m => (
+              <div key={m} className="flex items-center justify-between py-2 border-b border-border">
+                <span>{m}</span>
+                <Button variant="ghost" size="sm" className="text-xs h-7">Edit</Button>
+              </div>
+            ))}
+          </div>
+          <Button variant="outline" size="sm" className="mt-3 text-xs">+ Add Mandal</Button>
+        </div>
+
+        {/* Court Types */}
         <div className="govt-card p-5">
           <h3 className="text-sm font-semibold text-foreground mb-4">Court Types</h3>
           <div className="space-y-2 text-sm">
