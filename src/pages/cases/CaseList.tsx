@@ -1,7 +1,7 @@
 import { AppLayout } from "@/components/layout/AppLayout";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { StatusBadge } from "@/components/shared/StatusBadge";
-import { cases } from "@/data/sampleData";
+import { cases, caseTypes, mandals } from "@/data/sampleData";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -28,10 +28,10 @@ export default function CaseList() {
         <div className="flex flex-wrap gap-3">
           <div className="relative flex-1 min-w-[200px]">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-            <Input placeholder="Search by case number, title, petitioner..." className="pl-9 h-9 text-sm" />
+            <Input placeholder="Search by case number, title, petitioner, respondent..." className="pl-9 h-9 text-sm" />
           </div>
           <Select>
-            <SelectTrigger className="w-[160px] h-9 text-sm"><SelectValue placeholder="Status" /></SelectTrigger>
+            <SelectTrigger className="w-[150px] h-9 text-sm"><SelectValue placeholder="Status" /></SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All Status</SelectItem>
               <SelectItem value="fresh">Fresh</SelectItem>
@@ -43,17 +43,36 @@ export default function CaseList() {
             </SelectContent>
           </Select>
           <Select>
-            <SelectTrigger className="w-[160px] h-9 text-sm"><SelectValue placeholder="Court" /></SelectTrigger>
+            <SelectTrigger className="w-[150px] h-9 text-sm"><SelectValue placeholder="Case Type" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Case Types</SelectItem>
+              {caseTypes.map(ct => (
+                <SelectItem key={ct} value={ct.toLowerCase().replace(/\s/g, '-')}>{ct}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Select>
+            <SelectTrigger className="w-[150px] h-9 text-sm"><SelectValue placeholder="Court" /></SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All Courts</SelectItem>
               <SelectItem value="hc">High Court</SelectItem>
               <SelectItem value="dc">District Court</SelectItem>
               <SelectItem value="tribunal">Tribunal</SelectItem>
               <SelectItem value="consumer">Consumer Forum</SelectItem>
+              <SelectItem value="revenue">Revenue Court</SelectItem>
             </SelectContent>
           </Select>
           <Select>
-            <SelectTrigger className="w-[160px] h-9 text-sm"><SelectValue placeholder="Officer" /></SelectTrigger>
+            <SelectTrigger className="w-[150px] h-9 text-sm"><SelectValue placeholder="Mandal" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Mandals</SelectItem>
+              {mandals.map(m => (
+                <SelectItem key={m} value={m.toLowerCase()}>{m}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Select>
+            <SelectTrigger className="w-[150px] h-9 text-sm"><SelectValue placeholder="Officer" /></SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All Officers</SelectItem>
               <SelectItem value="srinivas">K. Srinivas Rao</SelectItem>
@@ -70,10 +89,14 @@ export default function CaseList() {
           <table className="w-full govt-table">
             <thead>
               <tr>
-                <th>Case ID</th>
                 <th>Case Number</th>
                 <th>Title</th>
+                <th>Case Type</th>
                 <th>Court</th>
+                <th>Mandal</th>
+                <th>Respondent</th>
+                <th>Co-Respondent(s)</th>
+                <th>Filed</th>
                 <th>Status</th>
                 <th>Priority</th>
                 <th>Officer</th>
@@ -84,14 +107,18 @@ export default function CaseList() {
             <tbody>
               {cases.map(c => (
                 <tr key={c.id}>
-                  <td className="font-mono text-xs">{c.id}</td>
-                  <td className="font-medium text-foreground">{c.caseNumber}</td>
-                  <td className="max-w-[200px] truncate">{c.title}</td>
-                  <td className="text-xs">{c.courtType}</td>
+                  <td className="font-medium text-foreground whitespace-nowrap">{c.caseNumber}</td>
+                  <td className="max-w-[160px] truncate">{c.title}</td>
+                  <td className="text-xs whitespace-nowrap">{c.caseType}</td>
+                  <td className="text-xs max-w-[120px] truncate">{c.court}</td>
+                  <td className="text-xs whitespace-nowrap">{c.mandal}</td>
+                  <td className="text-xs max-w-[120px] truncate">{c.respondent}</td>
+                  <td className="text-xs max-w-[140px] truncate">{c.coRespondents.join(", ") || "-"}</td>
+                  <td className="text-xs whitespace-nowrap">{c.filingDate}</td>
                   <td><StatusBadge value={c.status} /></td>
                   <td><StatusBadge value={c.priority} type="priority" /></td>
-                  <td className="text-xs">{c.assignedOfficer}</td>
-                  <td className="text-xs">{c.nextHearing}</td>
+                  <td className="text-xs whitespace-nowrap">{c.assignedOfficer}</td>
+                  <td className="text-xs whitespace-nowrap">{c.nextHearing}</td>
                   <td>
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>

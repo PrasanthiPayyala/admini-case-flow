@@ -5,10 +5,22 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Save, X } from "lucide-react";
+import { Save, X, Plus, Trash2 } from "lucide-react";
 import { Link } from "react-router-dom";
+import { useState } from "react";
+import { caseTypes, mandals, courtNames } from "@/data/sampleData";
 
 export default function AddCase() {
+  const [coRespondents, setCoRespondents] = useState<string[]>([""]);
+
+  const addCoRespondent = () => setCoRespondents([...coRespondents, ""]);
+  const removeCoRespondent = (index: number) => setCoRespondents(coRespondents.filter((_, i) => i !== index));
+  const updateCoRespondent = (index: number, value: string) => {
+    const updated = [...coRespondents];
+    updated[index] = value;
+    setCoRespondents(updated);
+  };
+
   return (
     <AppLayout>
       <PageHeader
@@ -33,8 +45,30 @@ export default function AddCase() {
               <Input placeholder="Brief title of the case" className="h-9 text-sm" />
             </div>
             <div className="space-y-2">
+              <Label className="text-xs">Case Type *</Label>
+              <Select>
+                <SelectTrigger className="h-9 text-sm"><SelectValue placeholder="Select case type" /></SelectTrigger>
+                <SelectContent>
+                  {caseTypes.map(ct => (
+                    <SelectItem key={ct} value={ct.toLowerCase().replace(/\s/g, '-')}>{ct}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label className="text-xs">Filing Date *</Label>
+              <Input type="date" className="h-9 text-sm" />
+            </div>
+            <div className="space-y-2">
               <Label className="text-xs">Court Name *</Label>
-              <Input placeholder="e.g. High Court of Telangana" className="h-9 text-sm" />
+              <Select>
+                <SelectTrigger className="h-9 text-sm"><SelectValue placeholder="Select court" /></SelectTrigger>
+                <SelectContent>
+                  {courtNames.map(cn => (
+                    <SelectItem key={cn} value={cn.toLowerCase().replace(/[\s,]/g, '-')}>{cn}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
             <div className="space-y-2">
               <Label className="text-xs">Court Type *</Label>
@@ -45,24 +79,20 @@ export default function AddCase() {
                   <SelectItem value="dc">District Court</SelectItem>
                   <SelectItem value="tribunal">Tribunal</SelectItem>
                   <SelectItem value="consumer">Consumer Forum</SelectItem>
+                  <SelectItem value="revenue">Revenue Court</SelectItem>
                 </SelectContent>
               </Select>
             </div>
             <div className="space-y-2">
-              <Label className="text-xs">Case Type *</Label>
+              <Label className="text-xs">Mandal *</Label>
               <Select>
-                <SelectTrigger className="h-9 text-sm"><SelectValue placeholder="Select case type" /></SelectTrigger>
+                <SelectTrigger className="h-9 text-sm"><SelectValue placeholder="Select mandal" /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="wp">Writ Petition</SelectItem>
-                  <SelectItem value="os">Original Suit</SelectItem>
-                  <SelectItem value="ccc">Consumer Case</SelectItem>
-                  <SelectItem value="ta">Tribunal Appeal</SelectItem>
+                  {mandals.map(m => (
+                    <SelectItem key={m} value={m.toLowerCase()}>{m}</SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
-            </div>
-            <div className="space-y-2">
-              <Label className="text-xs">Filing Date *</Label>
-              <Input type="date" className="h-9 text-sm" />
             </div>
             <div className="space-y-2">
               <Label className="text-xs">Department / Section *</Label>
@@ -102,6 +132,36 @@ export default function AddCase() {
               <Label className="text-xs">Respondent Name *</Label>
               <Input placeholder="Full name of respondent" className="h-9 text-sm" />
             </div>
+          </div>
+
+          {/* Co-Respondents */}
+          <div className="mt-4">
+            <div className="flex items-center justify-between mb-2">
+              <Label className="text-xs">Co-Respondent(s)</Label>
+              <Button type="button" variant="outline" size="sm" className="h-7 text-xs" onClick={addCoRespondent}>
+                <Plus className="h-3 w-3 mr-1" />Add Co-Respondent
+              </Button>
+            </div>
+            <div className="space-y-2">
+              {coRespondents.map((cr, i) => (
+                <div key={i} className="flex gap-2">
+                  <Input
+                    placeholder={`Co-Respondent ${i + 1}`}
+                    className="h-9 text-sm"
+                    value={cr}
+                    onChange={e => updateCoRespondent(i, e.target.value)}
+                  />
+                  {coRespondents.length > 1 && (
+                    <Button type="button" variant="ghost" size="sm" className="h-9 px-2" onClick={() => removeCoRespondent(i)}>
+                      <Trash2 className="h-3.5 w-3.5 text-muted-foreground" />
+                    </Button>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4 mt-4">
             <div className="space-y-2">
               <Label className="text-xs">Advocate Name</Label>
               <Input placeholder="Advocate handling the case" className="h-9 text-sm" />
