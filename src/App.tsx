@@ -11,9 +11,12 @@ import Dashboard from "./pages/Dashboard";
 import CaseList from "./pages/cases/CaseList";
 import CaseDetails from "./pages/cases/CaseDetails";
 import AddCase from "./pages/cases/AddCase";
+import BulkUpload from "./pages/cases/BulkUpload";
 import AppealList from "./pages/appeals/AppealList";
 import AddAppeal from "./pages/appeals/AddAppeal";
 import HearingList from "./pages/hearings/HearingList";
+import CourtLiaisonUpdates from "./pages/hearings/CourtLiaisonUpdates";
+import ComplianceTracker from "./pages/compliance/ComplianceTracker";
 import AlertCenter from "./pages/alerts/AlertCenter";
 import ReportsPage from "./pages/reports/ReportsPage";
 import UserList from "./pages/admin/UserList";
@@ -40,10 +43,13 @@ const App = () => (
           <Route path="/" element={<Dashboard />} />
           <Route path="/cases" element={<CaseList />} />
           <Route path="/cases/new" element={<AddCase />} />
+          <Route path="/cases/bulk-upload" element={<BulkUpload />} />
           <Route path="/cases/:id" element={<CaseDetails />} />
           <Route path="/appeals" element={<AppealList />} />
           <Route path="/appeals/new" element={<AddAppeal />} />
           <Route path="/hearings" element={<HearingList />} />
+          <Route path="/court-liaison" element={<CourtLiaisonUpdates />} />
+          <Route path="/compliance" element={<ComplianceTracker />} />
           <Route path="/alerts" element={<AlertCenter />} />
           <Route path="/reports" element={<ReportsPage />} />
           <Route path="/users" element={<UserList />} />
