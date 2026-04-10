@@ -147,7 +147,7 @@ export default function CaseList() {
           </table>
         </div>
         <div className="px-4 py-2 border-t border-border flex items-center justify-between text-xs text-muted-foreground">
-          <span>Showing {cases.length} of {cases.length} cases</span>
+          <span>Showing {cases.length} of {cases.length} cases • Last refreshed: 10-Apr-2026</span>
           <div className="flex gap-1">
             <Button variant="outline" size="sm" disabled className="h-7 text-xs">Previous</Button>
             <Button variant="outline" size="sm" className="h-7 text-xs bg-primary text-primary-foreground">1</Button>
