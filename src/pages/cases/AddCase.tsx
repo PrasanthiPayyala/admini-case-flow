@@ -115,9 +115,14 @@ export default function AddCase() {
             <div className="space-y-1"><Label className="text-[10px]">Assigned Officer *</Label>
               <Select><SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Select" /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="srinivas">K. Srinivas Rao</SelectItem>
-                  <SelectItem value="padma">S. Padma Kumari</SelectItem>
-                  <SelectItem value="rajender">D. Rajender</SelectItem>
+                  <SelectItem value="dlo">District Legal Officer</SelectItem>
+                  <SelectItem value="sro">Senior Reviewing Officer</SelectItem>
+                  <SelectItem value="so-land">Section Officer – Land Matters</SelectItem>
+                  <SelectItem value="hcr">High Court Representative Officer</SelectItem>
+                  <SelectItem value="ro">Revenue Officer – Collectorate</SelectItem>
+                  <SelectItem value="mno-b">Mandal Nodal Officer – Bhongir</SelectItem>
+                  <SelectItem value="mno-c">Mandal Nodal Officer – Choutuppal</SelectItem>
+                  <SelectItem value="dno-r">Department Nodal Officer – Revenue</SelectItem>
                 </SelectContent>
               </Select>
             </div>
