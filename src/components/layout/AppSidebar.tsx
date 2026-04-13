@@ -1,11 +1,12 @@
-import { useLocation, Link } from "react-router-dom";
+import { useLocation, Link, useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import {
   LayoutDashboard, Briefcase, Scale, CalendarDays, Bell, BarChart3,
   Users, Shield, FileText, ClipboardList, Settings, User, Lock, LogOut,
-  ChevronLeft, ChevronDown, ChevronRight, Upload, ShieldCheck, Gavel
+  ChevronLeft, ChevronDown, ChevronRight, ShieldCheck, Gavel
 } from "lucide-react";
 import { useState } from "react";
+import { useAuth } from "@/contexts/AuthContext";
 
 const mainNav = [
   { label: "Dashboard", icon: LayoutDashboard, href: "/" },
@@ -38,26 +39,30 @@ interface AppSidebarProps {
 
 export function AppSidebar({ collapsed, onToggle }: AppSidebarProps) {
   const location = useLocation();
+  const navigate = useNavigate();
+  const { permissions, logout } = useAuth();
   const [openSections, setOpenSections] = useState<Record<string, boolean>>({
     main: true, admin: true, account: false
   });
 
   const toggleSection = (s: string) => setOpenSections(prev => ({ ...prev, [s]: !prev[s] }));
 
+  const visibleItems = permissions?.visibleMenuItems || [];
+  const filteredMain = mainNav.filter(i => visibleItems.includes(i.href));
+  const filteredAdmin = adminNav.filter(i => visibleItems.includes(i.href));
+  const showAdmin = permissions?.visibleSidebarSections.admin && filteredAdmin.length > 0;
+
+  const handleLogout = () => { logout(); navigate("/login"); };
+
   const NavItem = ({ item }: { item: typeof mainNav[0] }) => {
     const active = location.pathname === item.href ||
       (item.href !== "/" && location.pathname.startsWith(item.href));
     return (
-      <Link
-        to={item.href}
-        className={cn(
-          "flex items-center gap-3 px-3 py-2 rounded-md text-sm transition-colors",
-          active
-            ? "bg-sidebar-accent text-sidebar-accent-foreground font-medium"
-            : "text-sidebar-foreground/80 hover:bg-sidebar-accent/50 hover:text-sidebar-accent-foreground"
-        )}
-        title={collapsed ? item.label : undefined}
-      >
+      <Link to={item.href} className={cn(
+        "flex items-center gap-3 px-3 py-2 rounded-md text-sm transition-colors",
+        active ? "bg-sidebar-accent text-sidebar-accent-foreground font-medium"
+          : "text-sidebar-foreground/80 hover:bg-sidebar-accent/50 hover:text-sidebar-accent-foreground"
+      )} title={collapsed ? item.label : undefined}>
         <item.icon className="h-4 w-4 flex-shrink-0" />
         {!collapsed && <span className="text-xs">{item.label}</span>}
       </Link>
@@ -66,10 +71,8 @@ export function AppSidebar({ collapsed, onToggle }: AppSidebarProps) {
 
   const SectionHeader = ({ label, section }: { label: string; section: string }) => (
     !collapsed ? (
-      <button
-        onClick={() => toggleSection(section)}
-        className="sidebar-section-label flex items-center justify-between w-full hover:text-sidebar-foreground/70"
-      >
+      <button onClick={() => toggleSection(section)}
+        className="sidebar-section-label flex items-center justify-between w-full hover:text-sidebar-foreground/70">
         {label}
         {openSections[section] ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
       </button>
@@ -101,9 +104,13 @@ export function AppSidebar({ collapsed, onToggle }: AppSidebarProps) {
 
       <nav className="flex-1 overflow-y-auto py-2 px-2 space-y-0.5">
         <SectionHeader label="Main" section="main" />
-        {(collapsed || openSections.main) && mainNav.map(item => <NavItem key={item.href} item={item} />)}
-        <SectionHeader label="Administration" section="admin" />
-        {(collapsed || openSections.admin) && adminNav.map(item => <NavItem key={item.href} item={item} />)}
+        {(collapsed || openSections.main) && filteredMain.map(item => <NavItem key={item.href} item={item} />)}
+        {showAdmin && (
+          <>
+            <SectionHeader label="Administration" section="admin" />
+            {(collapsed || openSections.admin) && filteredAdmin.map(item => <NavItem key={item.href} item={item} />)}
+          </>
+        )}
         <SectionHeader label="Account" section="account" />
         {(collapsed || openSections.account) && accountNav.map(item => <NavItem key={item.href} item={item} />)}
       </nav>
@@ -113,9 +120,9 @@ export function AppSidebar({ collapsed, onToggle }: AppSidebarProps) {
           <ChevronLeft className={cn("h-4 w-4 transition-transform", collapsed && "rotate-180")} />
         </button>
         {!collapsed && (
-          <Link to="/login" className="flex items-center gap-3 px-3 py-2 rounded-md text-xs text-sidebar-foreground/60 hover:bg-sidebar-accent/50 hover:text-sidebar-accent-foreground mt-1">
+          <button onClick={handleLogout} className="flex items-center gap-3 px-3 py-2 rounded-md text-xs text-sidebar-foreground/60 hover:bg-sidebar-accent/50 hover:text-sidebar-accent-foreground mt-1 w-full">
             <LogOut className="h-4 w-4" /><span>Logout</span>
-          </Link>
+          </button>
         )}
       </div>
     </aside>

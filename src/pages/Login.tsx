@@ -1,16 +1,41 @@
 import { useState } from "react";
-import { Scale, Lock, Eye, EyeOff } from "lucide-react";
+import { Scale, Lock, Eye, EyeOff, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
+import { useAuth } from "@/contexts/AuthContext";
+import { useToast } from "@/hooks/use-toast";
 
 export default function Login() {
   const [showPassword, setShowPassword] = useState(false);
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
+  const { login } = useAuth();
+  const navigate = useNavigate();
+  const { toast } = useToast();
+
+  const handleLogin = (e: React.FormEvent) => {
+    e.preventDefault();
+    setError("");
+    if (!email || !password) { setError("Please enter email and password."); return; }
+    setLoading(true);
+    setTimeout(() => {
+      const result = login(email, password);
+      setLoading(false);
+      if (result.success) {
+        toast({ title: "Login successful", description: "Welcome to LCMS" });
+        navigate("/");
+      } else {
+        setError(result.error || "Login failed.");
+      }
+    }, 400);
+  };
 
   return (
     <div className="min-h-screen bg-background flex">
-      {/* Left branding panel */}
       <div className="hidden lg:flex w-2/5 bg-primary flex-col justify-between p-10">
         <div>
           <div className="flex items-center gap-3 mb-8">
@@ -34,13 +59,23 @@ export default function Login() {
               <span>Secured with SSL encryption & role-based access</span>
             </div>
           </div>
+          <div className="mt-10 bg-primary-foreground/5 rounded-lg p-4">
+            <p className="text-[10px] text-primary-foreground/60 font-semibold mb-2">DEMO CREDENTIALS</p>
+            <div className="grid grid-cols-2 gap-1 text-[10px] text-primary-foreground/50">
+              <span>superadmin@lcms.local</span><span>demo123</span>
+              <span>admin@lcms.local</span><span>demo123</span>
+              <span>collector@lcms.local</span><span>demo123</span>
+              <span>legalofficer@lcms.local</span><span>demo123</span>
+              <span>liaisonofficer@lcms.local</span><span>demo123</span>
+              <span>dataentry@lcms.local</span><span>demo123</span>
+            </div>
+          </div>
         </div>
         <p className="text-[10px] text-primary-foreground/40">
           © 2024 District Collectorate, Yadadri Bhuvanagiri. All rights reserved.
         </p>
       </div>
 
-      {/* Right login form */}
       <div className="flex-1 flex items-center justify-center p-8">
         <div className="w-full max-w-sm space-y-6">
           <div className="lg:hidden flex items-center gap-3 mb-4">
@@ -58,24 +93,31 @@ export default function Login() {
             <p className="text-sm text-muted-foreground mt-1">Access the Legal Cell Monitoring System</p>
           </div>
 
-          <form className="space-y-4" onSubmit={(e) => e.preventDefault()}>
+          {error && (
+            <div className="flex items-center gap-2 p-3 rounded-md bg-destructive/10 text-destructive text-xs">
+              <AlertCircle className="h-4 w-4 flex-shrink-0" />
+              <span>{error}</span>
+            </div>
+          )}
+
+          <form className="space-y-4" onSubmit={handleLogin}>
             <div className="space-y-2">
               <Label htmlFor="email">Username / Email</Label>
-              <Input id="email" placeholder="officer@ybg.telangana.gov.in" className="h-10" />
+              <Input id="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="e.g. admin@lcms.local" className="h-10" />
             </div>
             <div className="space-y-2">
               <Label htmlFor="password">Password</Label>
               <div className="relative">
-                <Input id="password" type={showPassword ? "text" : "password"} placeholder="Enter password" className="h-10 pr-10" />
+                <Input id="password" type={showPassword ? "text" : "password"} value={password} onChange={e => setPassword(e.target.value)} placeholder="Enter password" className="h-10 pr-10" />
                 <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
                   {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                 </button>
               </div>
             </div>
 
-            <Link to="/" className="block">
-              <Button className="w-full h-10" type="button">Sign In</Button>
-            </Link>
+            <Button className="w-full h-10" type="submit" disabled={loading}>
+              {loading ? "Signing in..." : "Sign In"}
+            </Button>
 
             <div className="text-center">
               <Link to="/forgot-password" className="text-xs text-primary hover:underline">Forgot Password?</Link>

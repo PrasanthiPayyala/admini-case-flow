@@ -1,24 +1,27 @@
-import { Bell, Search, User } from "lucide-react";
+import { Bell, Search, User, LogOut } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-  DropdownMenuSeparator,
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem,
+  DropdownMenuTrigger, DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
+import { useAuth } from "@/contexts/AuthContext";
 
 export function TopBar() {
+  const { currentUser, logout } = useAuth();
+  const navigate = useNavigate();
+
+  const handleLogout = () => {
+    logout();
+    navigate("/login");
+  };
+
   return (
     <header className="h-14 bg-card border-b border-border flex items-center justify-between px-6 flex-shrink-0">
       <div className="flex items-center gap-4 flex-1 max-w-md">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="Search cases, hearings, officers..."
-            className="pl-9 h-9 text-sm bg-muted/50 border-border"
-          />
+          <Input placeholder="Search cases, hearings, officers..." className="pl-9 h-9 text-sm bg-muted/50 border-border" />
         </div>
       </div>
 
@@ -35,8 +38,8 @@ export function TopBar() {
                 <User className="h-4 w-4 text-primary-foreground" />
               </div>
               <div className="text-left hidden md:block">
-                <p className="text-xs font-medium text-foreground">K. Srinivas Rao</p>
-                <p className="text-[10px] text-muted-foreground">Legal Officer</p>
+                <p className="text-xs font-medium text-foreground">{currentUser?.name || "User"}</p>
+                <p className="text-[10px] text-muted-foreground">{currentUser?.role || ""}</p>
               </div>
             </button>
           </DropdownMenuTrigger>
@@ -44,7 +47,9 @@ export function TopBar() {
             <DropdownMenuItem asChild><Link to="/profile">Profile</Link></DropdownMenuItem>
             <DropdownMenuItem asChild><Link to="/change-password">Change Password</Link></DropdownMenuItem>
             <DropdownMenuSeparator />
-            <DropdownMenuItem asChild><Link to="/login">Logout</Link></DropdownMenuItem>
+            <DropdownMenuItem onClick={handleLogout}>
+              <LogOut className="h-3.5 w-3.5 mr-2" />Logout
+            </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
