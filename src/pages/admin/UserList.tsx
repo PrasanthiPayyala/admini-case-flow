@@ -16,7 +16,7 @@ import { mandals, departments } from "@/data/sampleData";
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 
-const emptyForm = { name: "", email: "", mobile: "", role: "" as AppRole, department: "", mandal: "", password: "", status: "Active" as const };
+const emptyForm = { name: "", email: "", mobile: "", role: "" as AppRole, department: "", mandal: "", password: "", status: "Active" as "Active" | "Inactive" };
 
 export default function UserList() {
   const { users, permissions, addUser, updateUser, resetPassword, toggleUserStatus } = useAuth();
