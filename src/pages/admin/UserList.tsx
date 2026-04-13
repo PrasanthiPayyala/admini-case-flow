@@ -7,6 +7,8 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Plus, MoreHorizontal, Edit, KeyRound, Power, Search } from "lucide-react";
+
+type UserStatus = "Active" | "Inactive";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { useAuth, DemoUser } from "@/contexts/AuthContext";
 import { ALL_ROLES, AppRole } from "@/lib/permissions";
