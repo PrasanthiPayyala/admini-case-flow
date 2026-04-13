@@ -8,39 +8,66 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Search, Save, ChevronRight } from "lucide-react";
-import { hearings, cases } from "@/data/sampleData";
+import { useData } from "@/contexts/DataContext";
 import { useState } from "react";
-
-const todayHearings = hearings.filter(h => h.status === "Scheduled");
+import { useToast } from "@/hooks/use-toast";
 
 export default function CourtLiaisonUpdates() {
-  const [selectedHearing, setSelectedHearing] = useState<string | null>(null);
-  const selected = todayHearings.find(h => h.id === selectedHearing);
+  const { hearings, cases, updateHearing, updateCase } = useData();
+  const { toast } = useToast();
+  const scheduledHearings = hearings.filter(h => h.status === "Scheduled");
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [form, setForm] = useState({ listed: "yes", outcome: "", nextDate: "", nextTime: "", orderPassed: false, orderSummary: "", complianceRequired: false, complianceStatus: "Not Applicable", complianceDueDate: "", remarks: "" });
+
+  const filtered = scheduledHearings.filter(h => !searchTerm || h.caseTitle.toLowerCase().includes(searchTerm.toLowerCase()) || h.court.toLowerCase().includes(searchTerm.toLowerCase()));
+  const selected = filtered.find(h => h.id === selectedId);
   const linkedCase = selected ? cases.find(c => c.id === selected.caseId) : null;
+
+  const handleSave = () => {
+    if (!selected || !linkedCase) return;
+    updateHearing(selected.id, {
+      status: "Completed",
+      outcome: form.outcome || (form.listed === "no" ? "Not Listed" : "Adjourned"),
+      remarks: form.remarks,
+      orderPassed: form.orderPassed,
+      orderSummary: form.orderSummary,
+      complianceRequired: form.complianceRequired,
+      complianceStatus: form.complianceStatus,
+      complianceDueDate: form.complianceDueDate,
+    });
+    const caseUpdates: any = { lastHearing: selected.date, lastUpdated: new Date().toISOString().slice(0, 10) };
+    if (form.nextDate) caseUpdates.nextHearing = form.nextDate;
+    if (form.orderPassed) { caseUpdates.orderPassed = true; caseUpdates.orderSummary = form.orderSummary; }
+    if (form.complianceRequired) { caseUpdates.complianceRequired = true; caseUpdates.complianceStatus = form.complianceStatus; caseUpdates.complianceDueDate = form.complianceDueDate; }
+    if (form.outcome === "Disposed" || form.outcome === "Dismissed") caseUpdates.status = "Closed";
+    else if (form.outcome) caseUpdates.status = "Ongoing";
+    updateCase(linkedCase.id, caseUpdates);
+    toast({ title: "Hearing updated", description: `${linkedCase.caseNumber} updated successfully.` });
+    setSelectedId(null);
+    setForm({ listed: "yes", outcome: "", nextDate: "", nextTime: "", orderPassed: false, orderSummary: "", complianceRequired: false, complianceStatus: "Not Applicable", complianceDueDate: "", remarks: "" });
+  };
+
+  const handleSaveAndNext = () => {
+    handleSave();
+    const idx = filtered.findIndex(h => h.id === selectedId);
+    if (idx >= 0 && idx < filtered.length - 1) setSelectedId(filtered[idx + 1].id);
+  };
 
   return (
     <AppLayout>
-      <PageHeader
-        title="Court Liaison – Daily Hearing Updates"
-        breadcrumbs={[{ label: "Home", href: "/" }, { label: "Hearings", href: "/hearings" }, { label: "Daily Updates" }]}
-      />
-
+      <PageHeader title="Court Liaison – Daily Hearing Updates" breadcrumbs={[{ label: "Home", href: "/" }, { label: "Hearings", href: "/hearings" }, { label: "Daily Updates" }]} />
       <div className="grid md:grid-cols-3 gap-6">
-        {/* Left: Hearing list */}
         <div className="govt-card">
           <div className="p-3 border-b border-border">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-              <Input placeholder="Search case number..." className="pl-9 h-8 text-xs" />
+              <Input placeholder="Search case..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="pl-9 h-8 text-xs" />
             </div>
           </div>
           <div className="divide-y divide-border max-h-[600px] overflow-y-auto">
-            {todayHearings.map(h => (
-              <button
-                key={h.id}
-                onClick={() => setSelectedHearing(h.id)}
-                className={`w-full text-left p-3 hover:bg-muted/50 transition-colors ${selectedHearing === h.id ? "bg-muted" : ""}`}
-              >
+            {filtered.map(h => (
+              <button key={h.id} onClick={() => setSelectedId(h.id)} className={`w-full text-left p-3 hover:bg-muted/50 transition-colors ${selectedId === h.id ? "bg-muted" : ""}`}>
                 <div className="flex items-center justify-between">
                   <div className="min-w-0">
                     <p className="text-xs font-semibold text-foreground truncate">{h.caseTitle}</p>
@@ -50,17 +77,13 @@ export default function CourtLiaisonUpdates() {
                 </div>
               </button>
             ))}
-            {todayHearings.length === 0 && (
-              <div className="p-6 text-center text-xs text-muted-foreground">No scheduled hearings</div>
-            )}
+            {filtered.length === 0 && <div className="p-6 text-center text-xs text-muted-foreground">No scheduled hearings</div>}
           </div>
         </div>
 
-        {/* Right: Quick update form */}
         <div className="md:col-span-2">
           {selected && linkedCase ? (
             <div className="space-y-4">
-              {/* Case summary strip */}
               <div className="govt-card p-4">
                 <div className="grid grid-cols-4 gap-3 text-xs">
                   <div><span className="text-muted-foreground">Case No.</span><p className="font-semibold text-foreground">{linkedCase.caseNumber}</p></div>
@@ -69,98 +92,52 @@ export default function CourtLiaisonUpdates() {
                   <div><span className="text-muted-foreground">Status</span><StatusBadge value={linkedCase.status} /></div>
                 </div>
               </div>
-
-              {/* Quick Update Form */}
               <div className="govt-card p-5">
                 <h3 className="text-sm font-semibold text-foreground mb-4">Quick Hearing Update</h3>
                 <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label className="text-xs">Hearing Listed?</Label>
-                    <Select defaultValue="yes">
-                      <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="yes">Yes - Listed</SelectItem>
-                        <SelectItem value="no">No - Not Listed</SelectItem>
-                        <SelectItem value="adjourned">Adjourned</SelectItem>
-                      </SelectContent>
+                  <div className="space-y-2"><Label className="text-xs">Hearing Listed?</Label>
+                    <Select value={form.listed} onValueChange={v => setForm({ ...form, listed: v })}><SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+                      <SelectContent><SelectItem value="yes">Yes - Listed</SelectItem><SelectItem value="no">No - Not Listed</SelectItem><SelectItem value="adjourned">Adjourned</SelectItem></SelectContent>
                     </Select>
                   </div>
-                  <div className="space-y-2">
-                    <Label className="text-xs">Hearing Outcome</Label>
-                    <Select>
-                      <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Select outcome" /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="adjourned">Adjourned</SelectItem>
-                        <SelectItem value="part-heard">Part-Heard</SelectItem>
-                        <SelectItem value="reserved">Reserved for Orders</SelectItem>
-                        <SelectItem value="disposed">Disposed</SelectItem>
-                        <SelectItem value="dismissed">Dismissed</SelectItem>
-                        <SelectItem value="allowed">Allowed</SelectItem>
-                        <SelectItem value="directions">Directions Issued</SelectItem>
-                      </SelectContent>
+                  <div className="space-y-2"><Label className="text-xs">Hearing Outcome</Label>
+                    <Select value={form.outcome} onValueChange={v => setForm({ ...form, outcome: v })}><SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Select outcome" /></SelectTrigger>
+                      <SelectContent>{["Adjourned","Part-Heard","Reserved for Orders","Disposed","Dismissed","Allowed","Directions Issued"].map(o => <SelectItem key={o} value={o}>{o}</SelectItem>)}</SelectContent>
                     </Select>
                   </div>
-                  <div className="space-y-2">
-                    <Label className="text-xs">Next Hearing Date</Label>
-                    <Input type="date" className="h-8 text-xs" />
-                  </div>
-                  <div className="space-y-2">
-                    <Label className="text-xs">Next Hearing Time</Label>
-                    <Input type="time" className="h-8 text-xs" />
-                  </div>
+                  <div className="space-y-2"><Label className="text-xs">Next Hearing Date</Label><Input type="date" value={form.nextDate} onChange={e => setForm({ ...form, nextDate: e.target.value })} className="h-8 text-xs" /></div>
+                  <div className="space-y-2"><Label className="text-xs">Next Hearing Time</Label><Input type="time" value={form.nextTime} onChange={e => setForm({ ...form, nextTime: e.target.value })} className="h-8 text-xs" /></div>
                 </div>
               </div>
-
-              {/* Order & Compliance */}
               <div className="govt-card p-5">
                 <h3 className="text-sm font-semibold text-foreground mb-4">Order & Compliance</h3>
                 <div className="grid grid-cols-2 gap-4">
-                  <div className="flex items-center gap-3">
-                    <Switch id="order-passed" />
-                    <Label htmlFor="order-passed" className="text-xs">Order Passed?</Label>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <Switch id="compliance-req" />
-                    <Label htmlFor="compliance-req" className="text-xs">Compliance Required?</Label>
-                  </div>
-                  <div className="space-y-2 col-span-2">
-                    <Label className="text-xs">Order Summary</Label>
-                    <Textarea placeholder="Brief summary of order passed..." rows={2} className="text-xs" />
-                  </div>
-                  <div className="space-y-2">
-                    <Label className="text-xs">Compliance Status</Label>
-                    <Select>
-                      <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Select" /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="na">Not Applicable</SelectItem>
-                        <SelectItem value="pending">Pending</SelectItem>
-                        <SelectItem value="partial">Partially Complied</SelectItem>
-                        <SelectItem value="complied">Complied</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-2">
-                    <Label className="text-xs">Compliance Due Date</Label>
-                    <Input type="date" className="h-8 text-xs" />
-                  </div>
+                  <div className="flex items-center gap-3"><Switch checked={form.orderPassed} onCheckedChange={v => setForm({ ...form, orderPassed: v })} /><Label className="text-xs">Order Passed?</Label></div>
+                  <div className="flex items-center gap-3"><Switch checked={form.complianceRequired} onCheckedChange={v => setForm({ ...form, complianceRequired: v })} /><Label className="text-xs">Compliance Required?</Label></div>
+                  {form.orderPassed && <div className="space-y-2 col-span-2"><Label className="text-xs">Order Summary</Label><Textarea value={form.orderSummary} onChange={e => setForm({ ...form, orderSummary: e.target.value })} rows={2} className="text-xs" /></div>}
+                  {form.complianceRequired && (
+                    <>
+                      <div className="space-y-2"><Label className="text-xs">Compliance Status</Label>
+                        <Select value={form.complianceStatus} onValueChange={v => setForm({ ...form, complianceStatus: v })}><SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+                          <SelectContent><SelectItem value="Not Applicable">Not Applicable</SelectItem><SelectItem value="Pending">Pending</SelectItem><SelectItem value="Partially Complied">Partially Complied</SelectItem><SelectItem value="Complied">Complied</SelectItem></SelectContent>
+                        </Select>
+                      </div>
+                      <div className="space-y-2"><Label className="text-xs">Compliance Due Date</Label><Input type="date" value={form.complianceDueDate} onChange={e => setForm({ ...form, complianceDueDate: e.target.value })} className="h-8 text-xs" /></div>
+                    </>
+                  )}
                 </div>
               </div>
-
-              {/* Remarks */}
               <div className="govt-card p-5">
                 <Label className="text-xs">Remarks</Label>
-                <Textarea placeholder="Add any additional remarks..." rows={2} className="text-xs mt-2" />
+                <Textarea value={form.remarks} onChange={e => setForm({ ...form, remarks: e.target.value })} placeholder="Add any additional remarks..." rows={2} className="text-xs mt-2" />
               </div>
-
               <div className="flex gap-3">
-                <Button size="sm"><Save className="h-3.5 w-3.5 mr-1.5" />Quick Save</Button>
-                <Button variant="outline" size="sm">Save & Next</Button>
+                <Button size="sm" onClick={handleSave}><Save className="h-3.5 w-3.5 mr-1.5" />Quick Save</Button>
+                <Button variant="outline" size="sm" onClick={handleSaveAndNext}>Save & Next</Button>
               </div>
             </div>
           ) : (
-            <div className="govt-card p-12 text-center">
-              <p className="text-sm text-muted-foreground">Select a hearing from the list to update</p>
-            </div>
+            <div className="govt-card p-12 text-center"><p className="text-sm text-muted-foreground">Select a hearing from the list to update</p></div>
           )}
         </div>
       </div>
