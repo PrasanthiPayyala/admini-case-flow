@@ -147,6 +147,16 @@ function makeCase(
   base: Omit<CaseRecord, "petitioners" | "respondents" | "coRespondentParties" | "division" | "counterDraftStatus" | "gpApprovalStatus" | "collectorApprovalStatus" | "counterFilingDueDate" | "pendingAtLevel" | "interimOrderStatus" | "finalJudgmentStatus" | "finalActionStatus">,
   extra?: Partial<CaseRecord>
 ): CaseRecord {
+  // Auto-generate a counterFilingDueDate for Counter Pending / Hearing Scheduled cases
+  let autoCounterDueDate = "";
+  if (base.status === "Counter Pending" || base.status === "Hearing Scheduled") {
+    // Set counter due 7 days before next hearing if available
+    if (base.nextHearing && base.nextHearing !== "-") {
+      const nh = new Date(base.nextHearing);
+      nh.setDate(nh.getDate() - 7);
+      autoCounterDueDate = nh.toISOString().split("T")[0];
+    }
+  }
   return {
     ...base,
     division: getDivision(base.mandal),
@@ -156,7 +166,7 @@ function makeCase(
     counterDraftStatus: base.status === "Counter Pending" ? "Pending" : base.status === "Closed" ? "Filed" : "Not Started",
     gpApprovalStatus: "Not Applicable",
     collectorApprovalStatus: "Not Applicable",
-    counterFilingDueDate: "",
+    counterFilingDueDate: autoCounterDueDate,
     pendingAtLevel: base.status === "Counter Pending" ? "Counter Filing" : base.complianceRequired && base.complianceStatus === "Pending" ? "Compliance" : base.status === "Closed" ? "Closed" : "Hearing Update",
     interimOrderStatus: base.orderPassed ? "Received" : "Not Applicable",
     finalJudgmentStatus: base.status === "Closed" ? "Received" : "Pending",
@@ -181,7 +191,15 @@ export const cases: CaseRecord[] = [
     landDisputeFlag: true, orderPassed: true, orderSummary: "Interim stay on acquisition proceedings granted",
     complianceRequired: true, complianceStatus: "Pending", complianceDueDate: "2026-04-30",
     complianceCompletedDate: "", lastUpdated: "2026-04-08"
-  }, { counterDraftStatus: "Filed", gpApprovalStatus: "Approved", collectorApprovalStatus: "Approved", pendingAtLevel: "Compliance" }),
+  }, {
+    counterDraftStatus: "Filed", gpApprovalStatus: "Approved", collectorApprovalStatus: "Approved", pendingAtLevel: "Compliance",
+    counterFilingDueDate: "2026-04-10",
+    petitioners: [
+      { name: "Ramesh Kumar Reddy", type: "Individual", department: "", remarks: "Primary petitioner" },
+      { name: "Smt. Padmavathi", type: "Individual", department: "", remarks: "Co-owner of Survey No. 145" },
+      { name: "K. Narasimha", type: "Individual", department: "", remarks: "Adjacent land owner" },
+    ],
+  }),
   makeCase({
     id: "LCMS/YBG/2024/002", caseNumber: "OS 118/2023", title: "Service Matter - Suspension of Ministerial Staff",
     court: "District Court, Bhongir", courtType: "District Court", caseType: "Service Matter",
