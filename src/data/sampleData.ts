@@ -533,7 +533,7 @@ export const cases: CaseRecord[] = [
     landDisputeFlag: true, orderPassed: true, orderSummary: "Interim stay granted pending hearing",
     complianceRequired: true, complianceStatus: "Pending", complianceDueDate: "2026-04-30",
     complianceCompletedDate: "", lastUpdated: "2026-04-09"
-  }, { counterDraftStatus: "Draft Ready", gpApprovalStatus: "Pending", pendingAtLevel: "GP Approval" }),
+  }, { counterDraftStatus: "Draft Ready", gpApprovalStatus: "Pending", pendingAtLevel: "GP Approval", counterFilingDueDate: "2026-04-12" }),
   makeCase({
     id: "LCMS/YBG/2025/021", caseNumber: "CS 234/2025", title: "Civil Suit - Property Dispute, Bibinagar",
     court: "Civil Court, Bhongir", courtType: "Civil Court", caseType: "Civil Suit",
