@@ -565,6 +565,13 @@ export const cases: CaseRecord[] = [
     landDisputeFlag: true, orderPassed: true, orderSummary: "Joint survey ordered within 45 days",
     complianceRequired: true, complianceStatus: "Partially Complied", complianceDueDate: "2026-05-06",
     complianceCompletedDate: "", lastUpdated: "2026-04-09"
+  }, {
+    respondents: [
+      { name: "District Collector, Yadadri Bhuvanagiri", type: "Government", department: "Revenue Department", remarks: "" },
+      { name: "Survey Department", type: "Government", department: "Survey & Settlement", remarks: "" },
+      { name: "Tahsildar, Yadagirigutta", type: "Government", department: "Tahsildar Office", remarks: "" },
+    ],
+    counterFilingDueDate: "2026-04-14",
   }),
   makeCase({
     id: "LCMS/YBG/2025/023", caseNumber: "OS 345/2025", title: "Irrigation Canal Land Dispute - Addagudur",
