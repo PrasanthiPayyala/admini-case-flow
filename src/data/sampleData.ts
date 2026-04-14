@@ -215,7 +215,9 @@ export const cases: CaseRecord[] = [
     landDisputeFlag: false, orderPassed: false, orderSummary: "",
     complianceRequired: false, complianceStatus: "Not Applicable", complianceDueDate: "",
     complianceCompletedDate: "", lastUpdated: "2026-04-09"
-  }, { pendingAtLevel: "Counter Filing", counterDraftStatus: "Draft Ready", gpApprovalStatus: "Pending" }),
+  }, { pendingAtLevel: "Counter Filing", counterDraftStatus: "Draft Ready", gpApprovalStatus: "Pending",
+    counterFilingDueDate: "2026-04-15",
+  }),
   makeCase({
     id: "LCMS/YBG/2024/003", caseNumber: "CCC 89/2024", title: "Consumer Complaint - Water Supply Irregularity",
     court: "Consumer Forum", courtType: "Consumer Forum", caseType: "Consumer Matter",
@@ -231,7 +233,13 @@ export const cases: CaseRecord[] = [
     landDisputeFlag: false, orderPassed: false, orderSummary: "",
     complianceRequired: false, complianceStatus: "Not Applicable", complianceDueDate: "",
     complianceCompletedDate: "", lastUpdated: "2026-04-07"
-  }, { pendingAtLevel: "Department" }),
+  }, {
+    pendingAtLevel: "Department",
+    respondents: [
+      { name: "Municipal Commissioner, Bhongir", type: "Government", department: "Municipal Administration", remarks: "" },
+      { name: "Executive Engineer, HMWSSB", type: "Government", department: "Irrigation", remarks: "Water supply wing" },
+    ],
+  }),
   makeCase({
     id: "LCMS/YBG/2024/004", caseNumber: "WP 7892/2023", title: "Encroachment Removal - Govt Land, Choutuppal",
     court: "Telangana High Court", courtType: "High Court", caseType: "Encroachment Matter",
@@ -247,7 +255,18 @@ export const cases: CaseRecord[] = [
     landDisputeFlag: true, orderPassed: true, orderSummary: "Status quo ordered on encroached land",
     complianceRequired: true, complianceStatus: "Partially Complied", complianceDueDate: "2026-04-15",
     complianceCompletedDate: "", lastUpdated: "2026-04-09"
-  }, { counterDraftStatus: "Pending", gpApprovalStatus: "Pending", pendingAtLevel: "GP Approval" }),
+  }, { counterDraftStatus: "Pending", gpApprovalStatus: "Pending", pendingAtLevel: "GP Approval",
+    counterFilingDueDate: "2026-04-12",
+    petitioners: [
+      { name: "Telangana State Govt", type: "Government", department: "Revenue Department", remarks: "" },
+      { name: "District Collector, Yadadri Bhuvanagiri", type: "Government", department: "Collectorate Legal Cell", remarks: "Co-petitioner" },
+    ],
+    respondents: [
+      { name: "Various Encroachers", type: "Individual", department: "", remarks: "Primary respondents" },
+      { name: "Gram Panchayat, Choutuppal", type: "Government", department: "Panchayat Raj", remarks: "" },
+      { name: "Tahsildar, Choutuppal", type: "Government", department: "Tahsildar Office", remarks: "" },
+    ],
+  }),
   makeCase({
     id: "LCMS/YBG/2024/005", caseNumber: "TA 456/2023", title: "Tribunal Appeal - PRC Arrears Claim",
     court: "Revenue Tribunal", courtType: "Tribunal", caseType: "Tribunal Matter",
