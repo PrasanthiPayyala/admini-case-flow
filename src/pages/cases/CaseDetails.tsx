@@ -4,7 +4,7 @@ import { StatusBadge } from "@/components/shared/StatusBadge";
 import { HC_STATUS_URL } from "@/data/sampleData";
 import { useParams, Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Edit, FileText, Calendar, ArrowLeft, ExternalLink, ShieldCheck, Plus } from "lucide-react";
+import { Edit, FileText, Calendar, ArrowLeft, ExternalLink, ShieldCheck, Plus, Printer, Scale, Users, Clock, Gavel, FolderOpen, Activity } from "lucide-react";
 import { useData } from "@/contexts/DataContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
@@ -13,8 +13,27 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
+
+// Document stage demo data
+const demoDocuments = [
+  { id: 1, title: "Writ Petition Copy", type: "Petition", stage: "Filed", date: "2024-01-15", uploadedBy: "District Legal Officer" },
+  { id: 2, title: "Counter Affidavit Draft", type: "Counter", stage: "Counter", date: "2024-03-10", uploadedBy: "Section Officer" },
+  { id: 3, title: "Interim Order Copy", type: "Court Order", stage: "Interim", date: "2024-04-02", uploadedBy: "HC Liaison" },
+  { id: 4, title: "Compliance Report", type: "Report", stage: "Compliance", date: "2024-04-08", uploadedBy: "Revenue Officer" },
+];
+const docStages = ["Filed", "Interim", "Counter", "Compliance", "Judgment", "Miscellaneous"];
+
+function DetailField({ label, value, className }: { label: string; value: React.ReactNode; className?: string }) {
+  return (
+    <div className={className}>
+      <p className="detail-label">{label}</p>
+      <div className="detail-value">{value || "-"}</div>
+    </div>
+  );
+}
 
 export default function CaseDetails() {
   const { id } = useParams();
@@ -39,7 +58,6 @@ export default function CaseDetails() {
       complianceRequired: hForm.complianceRequired, complianceStatus: hForm.complianceStatus,
       complianceDueDate: hForm.complianceDueDate,
     });
-    // Update case fields
     const updates: Partial<typeof caseData> = { lastUpdated: new Date().toISOString().slice(0, 10) };
     if (hForm.outcome) { updates.lastHearing = hForm.date; updates.status = hForm.outcome === "Disposed" || hForm.outcome === "Dismissed" ? "Closed" : "Ongoing"; }
     if (hForm.orderPassed) { updates.orderPassed = true; updates.orderSummary = hForm.orderSummary; }
@@ -56,113 +74,250 @@ export default function CaseDetails() {
         title={caseData.title}
         breadcrumbs={[{ label: "Home", href: "/" }, { label: "Cases", href: "/cases" }, { label: caseData.caseNumber }]}
         actions={
-          <>
+          <div className="flex items-center gap-2">
             <Link to="/cases"><Button variant="outline" size="sm"><ArrowLeft className="h-3.5 w-3.5 mr-1.5" />Back</Button></Link>
             <a href={HC_STATUS_URL} target="_blank" rel="noopener noreferrer">
               <Button variant="outline" size="sm"><ExternalLink className="h-3.5 w-3.5 mr-1.5" />HC Status</Button>
             </a>
+            {permissions?.canUpdateHearing && <Button variant="outline" size="sm" onClick={() => setHearingDialog(true)}><Plus className="h-3.5 w-3.5 mr-1.5" />Add Hearing</Button>}
             {permissions?.canEditCase && <Link to={`/cases/${encodeURIComponent(caseData.id)}/edit`}><Button size="sm"><Edit className="h-3.5 w-3.5 mr-1.5" />Edit Case</Button></Link>}
-          </>
+            <Button variant="outline" size="sm" onClick={() => window.print()}><Printer className="h-3.5 w-3.5 mr-1.5" />Print</Button>
+          </div>
         }
       />
 
-      <div className="grid md:grid-cols-3 gap-5">
-        <div className="md:col-span-2 space-y-5">
-          <div className="govt-card p-5">
-            <h3 className="text-xs font-semibold text-foreground mb-3">Case Information</h3>
-            <div className="grid grid-cols-3 gap-3 text-sm">
+      <div className="grid md:grid-cols-3 gap-4">
+        {/* Main content - 2 cols */}
+        <div className="md:col-span-2 space-y-4">
+          {/* Case Summary */}
+          <div className="govt-section-card p-4">
+            <h3 className="text-xs font-semibold text-foreground mb-3 flex items-center gap-1.5"><Briefcase className="h-3.5 w-3.5" />Case Summary</h3>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+              <DetailField label="Case ID" value={caseData.id} />
+              <DetailField label="Case Number" value={caseData.caseNumber} />
+              <DetailField label="Case Type" value={caseData.caseType} />
+              <DetailField label="Court Name" value={caseData.court} />
+              <DetailField label="Court Type" value={caseData.courtType} />
+              <DetailField label="Nature of Case" value={caseData.natureOfCase} />
+              <DetailField label="Filing Date" value={caseData.filingDate} />
+              <DetailField label="Filing Year" value={caseData.filingYear} />
+              <DetailField label="Department" value={caseData.department} />
+              <DetailField label="Mandal" value={caseData.mandal} />
+              <DetailField label="Assigned Officer" value={caseData.assignedOfficer} />
+              <DetailField label="Collectorate Involvement" value={caseData.collectorateInvolvement} />
+            </div>
+          </div>
+
+          {/* Parties */}
+          <div className="govt-section-card p-4">
+            <h3 className="text-xs font-semibold text-foreground mb-3 flex items-center gap-1.5"><Users className="h-3.5 w-3.5" />Parties</h3>
+            <div className="grid md:grid-cols-2 gap-4">
+              <div className="bg-muted/30 rounded p-3">
+                <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-1">Petitioner</p>
+                <p className="text-xs font-medium text-foreground">{caseData.petitioner}</p>
+              </div>
+              <div className="bg-muted/30 rounded p-3">
+                <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-1">Respondent</p>
+                <p className="text-xs font-medium text-foreground">{caseData.respondent}</p>
+              </div>
+            </div>
+            {caseData.coRespondents.length > 0 && (
+              <div className="mt-3 bg-muted/30 rounded p-3">
+                <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-1">Co-Respondent(s)</p>
+                <ul className="space-y-0.5">{caseData.coRespondents.map((cr, i) => <li key={i} className="text-xs font-medium">{i+1}. {cr}</li>)}</ul>
+              </div>
+            )}
+            <div className="grid grid-cols-2 gap-3 mt-3">
+              <DetailField label="Advocate" value={caseData.advocate} />
+              <DetailField label="Advocate Contact" value={caseData.advocateContact} />
+            </div>
+          </div>
+
+          {/* Subject & Remarks */}
+          <div className="govt-card p-4">
+            <h3 className="text-xs font-semibold text-foreground mb-2">Subject & Remarks</h3>
+            <p className="text-xs text-foreground mb-2">{caseData.subject}</p>
+            {caseData.remarks && <p className="text-xs text-muted-foreground italic border-t border-border pt-2 mt-2">{caseData.remarks}</p>}
+          </div>
+
+          {/* Order & Compliance */}
+          <div className="govt-section-card p-4">
+            <h3 className="text-xs font-semibold text-foreground mb-3 flex items-center gap-1.5"><ShieldCheck className="h-3.5 w-3.5" />Order & Compliance</h3>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+              <DetailField label="Order Passed" value={caseData.orderPassed ? <StatusBadge value="Yes" /> : "No"} />
+              <DetailField label="Compliance Required" value={caseData.complianceRequired ? <StatusBadge value="Yes" /> : "No"} />
+              <DetailField label="Compliance Status" value={<StatusBadge value={caseData.complianceStatus} />} />
+              <DetailField label="Compliance Due Date" value={caseData.complianceDueDate || "-"} />
+            </div>
+            {caseData.orderPassed && (
+              <div className="mt-3 bg-muted/30 rounded p-3">
+                <p className="detail-label">Order Summary</p>
+                <p className="text-xs font-medium">{caseData.orderSummary}</p>
+              </div>
+            )}
+            {caseData.complianceCompletedDate && (
+              <div className="mt-2">
+                <DetailField label="Completed Date" value={caseData.complianceCompletedDate} />
+              </div>
+            )}
+          </div>
+
+          {/* Counter / Approval Workflow */}
+          <div className="govt-card p-4">
+            <h3 className="text-xs font-semibold text-foreground mb-3 flex items-center gap-1.5"><Gavel className="h-3.5 w-3.5" />Legal Progress & Approvals</h3>
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+              <div className="bg-muted/30 rounded p-3 text-center">
+                <p className="detail-label">Counter Status</p>
+                <StatusBadge value={caseData.status === "Counter Pending" ? "Pending" : "Filed"} />
+              </div>
+              <div className="bg-muted/30 rounded p-3 text-center">
+                <p className="detail-label">GP Approval</p>
+                <StatusBadge value="Not Applicable" />
+              </div>
+              <div className="bg-muted/30 rounded p-3 text-center">
+                <p className="detail-label">Collector Approval</p>
+                <StatusBadge value="Not Applicable" />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-3 mt-3">
+              <DetailField label="Pending At Level" value={caseData.status === "Counter Pending" ? "Pending with Department" : caseData.complianceRequired && caseData.complianceStatus === "Pending" ? "Pending Compliance" : caseData.status === "Closed" ? "Closed" : "Pending Hearing Update"} />
+              <DetailField label="Final Action Status" value={caseData.status === "Closed" ? "Completed" : "In Progress"} />
+            </div>
+          </div>
+
+          {/* Hearing Timeline */}
+          <div className="govt-card">
+            <div className="govt-card-header">
+              <h3><Calendar className="h-3.5 w-3.5" />Hearing History ({caseHearings.length})</h3>
+              {permissions?.canUpdateHearing && <Button size="sm" variant="outline" onClick={() => setHearingDialog(true)}><Plus className="h-3 w-3 mr-1" />Add Hearing</Button>}
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full govt-table">
+                <thead><tr><th>Date</th><th>Type</th><th>Status</th><th>Outcome</th><th>Order</th><th>Compliance</th><th>Remarks</th></tr></thead>
+                <tbody>
+                  {caseHearings.map(h => (
+                    <tr key={h.id}>
+                      <td className="whitespace-nowrap">{h.date}</td>
+                      <td>{h.type}</td>
+                      <td><StatusBadge value={h.status} size="sm" /></td>
+                      <td>{h.outcome || "-"}</td>
+                      <td>{h.orderPassed ? <StatusBadge value="Yes" size="sm" /> : "-"}</td>
+                      <td><StatusBadge value={h.complianceStatus} size="sm" /></td>
+                      <td className="max-w-[180px] truncate">{h.remarks}</td>
+                    </tr>
+                  ))}
+                  {caseHearings.length === 0 && <tr><td colSpan={7} className="text-center text-muted-foreground py-4">No hearings recorded</td></tr>}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          {/* Documents by Stage */}
+          <div className="govt-card">
+            <div className="govt-card-header">
+              <h3><FolderOpen className="h-3.5 w-3.5" />Documents by Stage</h3>
+              {permissions?.canUploadDocuments && <Button size="sm" variant="outline"><Plus className="h-3 w-3 mr-1" />Upload</Button>}
+            </div>
+            <Tabs defaultValue="Filed" className="p-3">
+              <TabsList className="mb-3">
+                {docStages.map(stage => (
+                  <TabsTrigger key={stage} value={stage} className="text-[10px]">
+                    {stage} ({demoDocuments.filter(d => d.stage === stage).length})
+                  </TabsTrigger>
+                ))}
+              </TabsList>
+              {docStages.map(stage => (
+                <TabsContent key={stage} value={stage}>
+                  {demoDocuments.filter(d => d.stage === stage).length > 0 ? (
+                    <table className="w-full govt-table">
+                      <thead><tr><th>Title</th><th>Type</th><th>Date</th><th>Uploaded By</th><th>Actions</th></tr></thead>
+                      <tbody>
+                        {demoDocuments.filter(d => d.stage === stage).map(doc => (
+                          <tr key={doc.id}>
+                            <td className="font-medium">{doc.title}</td>
+                            <td>{doc.type}</td>
+                            <td>{doc.date}</td>
+                            <td>{doc.uploadedBy}</td>
+                            <td><Button variant="ghost" size="sm" className="h-6 text-[10px]"><FileText className="h-3 w-3 mr-1" />View</Button></td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  ) : (
+                    <div className="text-center py-6 text-muted-foreground text-xs">No {stage.toLowerCase()} documents uploaded</div>
+                  )}
+                </TabsContent>
+              ))}
+            </Tabs>
+          </div>
+
+          {/* Audit / Activity Trail */}
+          <div className="govt-card">
+            <div className="govt-card-header"><h3><Activity className="h-3.5 w-3.5" />Activity Trail</h3></div>
+            <div className="p-4 space-y-3">
               {[
-                ["Case ID", caseData.id], ["Case Number", caseData.caseNumber], ["Case Type", caseData.caseType],
-                ["Court Name", caseData.court], ["Court Type", caseData.courtType], ["Mandal", caseData.mandal],
-                ["Department", caseData.department], ["Filing Date", caseData.filingDate], ["Filing Year", caseData.filingYear],
-                ["Assigned Officer", caseData.assignedOfficer], ["Nature of Case", caseData.natureOfCase],
-                ["Collectorate Involvement", caseData.collectorateInvolvement],
-              ].map(([label, val]) => (
-                <div key={label}><p className="text-[10px] text-muted-foreground mb-0.5">{label}</p><p className="font-medium text-foreground text-xs">{val}</p></div>
+                { action: "Case registered", by: "District Legal Officer", date: caseData.filingDate },
+                { action: "Counter affidavit prepared", by: "Section Officer", date: caseData.lastHearing !== "-" ? caseData.lastHearing : caseData.filingDate },
+                ...(caseData.orderPassed ? [{ action: "Order recorded", by: "HC Liaison Officer", date: caseData.lastUpdated }] : []),
+                ...(caseData.complianceRequired ? [{ action: `Compliance status: ${caseData.complianceStatus}`, by: "Revenue Officer", date: caseData.lastUpdated }] : []),
+                { action: "Last updated", by: "System", date: caseData.lastUpdated },
+              ].map((entry, i) => (
+                <div key={i} className="flex items-start gap-3">
+                  <div className="w-1.5 h-1.5 rounded-full bg-primary mt-1.5 flex-shrink-0" />
+                  <div className="flex-1">
+                    <p className="text-xs font-medium text-foreground">{entry.action}</p>
+                    <p className="text-[10px] text-muted-foreground">{entry.by} • {entry.date}</p>
+                  </div>
+                </div>
               ))}
             </div>
           </div>
-
-          <div className="govt-card p-5">
-            <h3 className="text-xs font-semibold text-foreground mb-3">Parties</h3>
-            <div className="grid grid-cols-2 gap-3 text-sm">
-              <div><p className="text-[10px] text-muted-foreground mb-0.5">Petitioner</p><p className="font-medium text-xs">{caseData.petitioner}</p></div>
-              <div><p className="text-[10px] text-muted-foreground mb-0.5">Respondent</p><p className="font-medium text-xs">{caseData.respondent}</p></div>
-              <div className="col-span-2">
-                <p className="text-[10px] text-muted-foreground mb-1">Co-Respondent(s)</p>
-                {caseData.coRespondents.length > 0 ? <ul className="space-y-0.5">{caseData.coRespondents.map((cr, i) => <li key={i} className="font-medium text-xs">{i+1}. {cr}</li>)}</ul> : <p className="text-muted-foreground text-xs">None</p>}
-              </div>
-              <div><p className="text-[10px] text-muted-foreground mb-0.5">Advocate</p><p className="font-medium text-xs">{caseData.advocate}</p></div>
-              <div><p className="text-[10px] text-muted-foreground mb-0.5">Advocate Contact</p><p className="font-medium text-xs">{caseData.advocateContact}</p></div>
-            </div>
-          </div>
-
-          <div className="govt-card p-5">
-            <h3 className="text-xs font-semibold text-foreground mb-3 flex items-center gap-1.5"><ShieldCheck className="h-3.5 w-3.5" />Order & Compliance</h3>
-            <div className="grid grid-cols-2 gap-3 text-sm">
-              <div><p className="text-[10px] text-muted-foreground mb-0.5">Order Passed</p><p className="font-medium text-xs">{caseData.orderPassed ? "Yes" : "No"}</p></div>
-              <div><p className="text-[10px] text-muted-foreground mb-0.5">Compliance Required</p><p className="font-medium text-xs">{caseData.complianceRequired ? "Yes" : "No"}</p></div>
-              {caseData.orderPassed && <div className="col-span-2"><p className="text-[10px] text-muted-foreground mb-0.5">Order Summary</p><p className="font-medium text-xs">{caseData.orderSummary}</p></div>}
-              <div><p className="text-[10px] text-muted-foreground mb-0.5">Compliance Status</p><StatusBadge value={caseData.complianceStatus} /></div>
-              <div><p className="text-[10px] text-muted-foreground mb-0.5">Compliance Due Date</p><p className="font-medium text-xs">{caseData.complianceDueDate || "-"}</p></div>
-              {caseData.complianceCompletedDate && <div><p className="text-[10px] text-muted-foreground mb-0.5">Completed Date</p><p className="font-medium text-xs">{caseData.complianceCompletedDate}</p></div>}
-            </div>
-          </div>
-
-          <div className="govt-card p-5">
-            <h3 className="text-xs font-semibold text-foreground mb-3">Subject & Remarks</h3>
-            <p className="text-xs text-foreground mb-2">{caseData.subject}</p>
-            <p className="text-xs text-muted-foreground italic">{caseData.remarks}</p>
-          </div>
-
-          <div className="govt-card">
-            <div className="px-5 py-3 border-b border-border flex items-center justify-between">
-              <h3 className="text-xs font-semibold text-foreground">Hearing History</h3>
-              <div className="flex gap-2">
-                {permissions?.canUpdateHearing && <Button size="sm" variant="outline" onClick={() => setHearingDialog(true)}><Plus className="h-3 w-3 mr-1" />Add Hearing</Button>}
-                <Calendar className="h-3.5 w-3.5 text-muted-foreground" />
-              </div>
-            </div>
-            <table className="w-full govt-table">
-              <thead><tr><th>Date</th><th>Type</th><th>Status</th><th>Outcome</th><th>Order</th><th>Compliance</th><th>Remarks</th></tr></thead>
-              <tbody>
-                {caseHearings.map(h => (
-                  <tr key={h.id}>
-                    <td className="text-xs">{h.date}</td>
-                    <td className="text-xs">{h.type}</td>
-                    <td><StatusBadge value={h.status} /></td>
-                    <td className="text-xs">{h.outcome || "-"}</td>
-                    <td className="text-xs">{h.orderPassed ? "Yes" : "-"}</td>
-                    <td><StatusBadge value={h.complianceStatus} /></td>
-                    <td className="max-w-[180px] truncate text-xs">{h.remarks}</td>
-                  </tr>
-                ))}
-                {caseHearings.length === 0 && <tr><td colSpan={7} className="text-center text-muted-foreground py-4 text-xs">No hearings recorded</td></tr>}
-              </tbody>
-            </table>
-          </div>
         </div>
 
-        <div className="space-y-5">
-          <div className="govt-card p-4 space-y-2">
-            <div className="flex items-center justify-between"><span className="text-[10px] text-muted-foreground">Status</span><StatusBadge value={caseData.status} /></div>
-            <div className="flex items-center justify-between"><span className="text-[10px] text-muted-foreground">Priority</span><StatusBadge value={caseData.priority} type="priority" /></div>
-            <div className="border-t border-border pt-2"><p className="text-[10px] text-muted-foreground mb-0.5">Case Type</p><p className="text-xs font-medium">{caseData.caseType}</p></div>
-            <div><p className="text-[10px] text-muted-foreground mb-0.5">Mandal</p><p className="text-xs font-medium">{caseData.mandal}</p></div>
-            <div><p className="text-[10px] text-muted-foreground mb-0.5">Department</p><p className="text-xs font-medium">{caseData.department}</p></div>
-            <div className="border-t border-border pt-2"><p className="text-[10px] text-muted-foreground mb-0.5">Last Hearing</p><p className="text-xs font-medium">{caseData.lastHearing}</p></div>
-            <div><p className="text-[10px] text-muted-foreground mb-0.5">Next Hearing</p><p className="text-xs font-medium">{caseData.nextHearing}</p></div>
-            <div><p className="text-[10px] text-muted-foreground mb-0.5">Last Updated</p><p className="text-xs font-medium">{caseData.lastUpdated}</p></div>
-            {caseData.landDisputeFlag && <div className="border-t border-border pt-2"><span className="px-2 py-0.5 rounded text-[10px] font-medium bg-status-urgent/10 text-status-urgent">⚠ Land Dispute</span></div>}
+        {/* Sidebar - 1 col */}
+        <div className="space-y-4">
+          <div className="govt-section-card p-4 space-y-3">
+            <div className="flex items-center justify-between"><span className="detail-label">Status</span><StatusBadge value={caseData.status} /></div>
+            <div className="flex items-center justify-between"><span className="detail-label">Priority</span><StatusBadge value={caseData.priority} type="priority" /></div>
+            <div className="border-t border-border pt-2">
+              <DetailField label="Case Type" value={caseData.caseType} />
+            </div>
+            <DetailField label="Mandal" value={caseData.mandal} />
+            <DetailField label="Department" value={caseData.department} />
+            <div className="border-t border-border pt-2">
+              <DetailField label="Last Hearing" value={caseData.lastHearing} />
+            </div>
+            <DetailField label="Next Hearing" value={caseData.nextHearing} />
+            <DetailField label="Last Updated" value={caseData.lastUpdated} />
+            {caseData.landDisputeFlag && (
+              <div className="border-t border-border pt-2">
+                <span className="px-2 py-0.5 rounded text-[10px] font-semibold bg-red-50 text-red-700 border border-red-200">⚠ Land Dispute</span>
+              </div>
+            )}
           </div>
+
+          {/* Pending At Level */}
+          <div className="govt-card p-4">
+            <h3 className="text-xs font-semibold text-foreground mb-2 flex items-center gap-1.5"><Clock className="h-3.5 w-3.5" />Pending At</h3>
+            <StatusBadge
+              value={
+                caseData.status === "Counter Pending" ? "Pending with Department" :
+                caseData.complianceRequired && caseData.complianceStatus === "Pending" ? "Pending Compliance" :
+                caseData.status === "Closed" ? "Closed" : "Pending Hearing Update"
+              }
+            />
+          </div>
+
           <div className="govt-card p-4">
             <h3 className="text-xs font-semibold text-foreground mb-2">Tags</h3>
-            <div className="flex flex-wrap gap-1">{caseData.tags.map(tag => <span key={tag} className="px-2 py-0.5 rounded text-[10px] bg-muted text-muted-foreground">{tag}</span>)}</div>
+            <div className="flex flex-wrap gap-1">{caseData.tags.map(tag => <span key={tag} className="px-2 py-0.5 rounded text-[10px] bg-muted text-muted-foreground font-medium">{tag}</span>)}</div>
           </div>
+
           <div className="govt-card p-4">
             <h3 className="text-xs font-semibold text-foreground mb-2">Quick Actions</h3>
             <div className="space-y-1.5">
               {permissions?.canUpdateHearing && <Button variant="outline" size="sm" className="w-full justify-start text-[10px]" onClick={() => setHearingDialog(true)}><Calendar className="h-3.5 w-3.5 mr-2" />Add Hearing Update</Button>}
+              {permissions?.canCreateAppeal && <Link to="/appeals/new" className="block"><Button variant="outline" size="sm" className="w-full justify-start text-[10px]"><Scale className="h-3.5 w-3.5 mr-2" />Add Appeal</Button></Link>}
               <Button variant="outline" size="sm" className="w-full justify-start text-[10px]"><FileText className="h-3.5 w-3.5 mr-2" />Upload Document</Button>
               <a href={HC_STATUS_URL} target="_blank" rel="noopener noreferrer" className="block">
                 <Button variant="outline" size="sm" className="w-full justify-start text-[10px]"><ExternalLink className="h-3.5 w-3.5 mr-2" />Check HC Status</Button>
