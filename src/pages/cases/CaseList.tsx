@@ -1,26 +1,78 @@
 import { AppLayout } from "@/components/layout/AppLayout";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { StatusBadge } from "@/components/shared/StatusBadge";
-import { caseTypes, mandals, departments, courtNames, priorities, collectorateInvolvementTypes, HC_STATUS_URL } from "@/data/sampleData";
+import { caseTypes, mandals, departments, courtNames, priorities, collectorateInvolvementTypes, HC_STATUS_URL, divisions } from "@/data/sampleData";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Badge } from "@/components/ui/badge";
+import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card";
 import { Plus, Download, Search, Eye, Edit, MoreHorizontal, Upload, ExternalLink } from "lucide-react";
 import { Link, useSearchParams } from "react-router-dom";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { useData } from "@/contexts/DataContext";
 import { useAuth } from "@/contexts/AuthContext";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
+import type { Party } from "@/data/sampleData";
 
 const STATUSES = ["Fresh","Ongoing","Hearing Scheduled","Counter Pending","Under Review","Appealed","Closed"];
+const DIVISION_NAMES = Object.keys(divisions);
 const PAGE_SIZE = 15;
+
+function getDaysLeft(dateStr: string): { label: string; className: string } {
+  if (!dateStr || dateStr === "-") return { label: "—", className: "text-muted-foreground" };
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const target = new Date(dateStr);
+  target.setHours(0, 0, 0, 0);
+  const diff = Math.ceil((target.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+  if (diff < 0) return { label: `${Math.abs(diff)}d overdue`, className: "text-destructive font-semibold" };
+  if (diff === 0) return { label: "Today", className: "text-destructive font-semibold" };
+  if (diff === 1) return { label: "Tomorrow", className: "text-orange-600 font-semibold" };
+  if (diff <= 3) return { label: `${diff} days`, className: "text-orange-600 font-medium" };
+  if (diff <= 7) return { label: `${diff} days`, className: "text-green-700 font-medium" };
+  return { label: `${diff} days`, className: "text-muted-foreground" };
+}
+
+function PartyCell({ parties }: { parties: Party[] }) {
+  if (!parties || parties.length === 0) return <span className="text-muted-foreground">—</span>;
+  const primary = parties[0];
+  const overflow = parties.length - 1;
+
+  if (overflow === 0) {
+    return <span className="truncate block max-w-[130px]" title={primary.name}>{primary.name}</span>;
+  }
+
+  return (
+    <HoverCard>
+      <HoverCardTrigger asChild>
+        <button className="text-left flex items-center gap-1 group">
+          <span className="truncate block max-w-[100px]" title={primary.name}>{primary.name}</span>
+          <Badge variant="secondary" className="text-[10px] px-1 py-0 h-4 shrink-0 cursor-pointer group-hover:bg-primary group-hover:text-primary-foreground">
+            +{overflow}
+          </Badge>
+        </button>
+      </HoverCardTrigger>
+      <HoverCardContent className="w-72 p-3" align="start">
+        <p className="text-xs font-semibold mb-2 text-muted-foreground">All Parties ({parties.length})</p>
+        <div className="space-y-1.5">
+          {parties.map((p, i) => (
+            <div key={i} className="text-xs flex justify-between items-start gap-2">
+              <span className="font-medium">{p.name}</span>
+              {p.department && <span className="text-muted-foreground text-[10px] shrink-0">{p.department}</span>}
+            </div>
+          ))}
+        </div>
+      </HoverCardContent>
+    </HoverCard>
+  );
+}
 
 export default function CaseList() {
   const { cases } = useData();
   const { permissions } = useAuth();
   const [searchParams] = useSearchParams();
 
-  // Initialize filters from URL params (for dashboard drill-down)
   const [search, setSearch] = useState("");
   const [statusF, setStatusF] = useState("all");
   const [typeF, setTypeF] = useState("all");
@@ -31,21 +83,23 @@ export default function CaseList() {
   const [collectF, setCollectF] = useState("all");
   const [complianceF, setComplianceF] = useState("all");
   const [landF, setLandF] = useState("all");
+  const [divisionF, setDivisionF] = useState("all");
   const [page, setPage] = useState(1);
 
-  // Apply URL params on mount
   useEffect(() => {
     const s = searchParams.get("status");
     const inv = searchParams.get("involvement");
     const land = searchParams.get("land");
     const dept = searchParams.get("department");
+    const div = searchParams.get("division");
     if (s && STATUSES.includes(s)) setStatusF(s);
     if (inv) setCollectF(inv);
     if (land === "true") setLandF("yes");
     if (dept) setDeptF(dept);
+    if (div && DIVISION_NAMES.includes(div)) setDivisionF(div);
   }, [searchParams]);
 
-  const filtered = cases.filter(c => {
+  const filtered = useMemo(() => cases.filter(c => {
     if (search) {
       const s = search.toLowerCase();
       if (!c.caseNumber.toLowerCase().includes(s) && !c.title.toLowerCase().includes(s) && !c.petitioner.toLowerCase().includes(s) && !c.respondent.toLowerCase().includes(s)) return false;
@@ -57,6 +111,7 @@ export default function CaseList() {
     if (deptF !== "all" && c.department !== deptF) return false;
     if (priorityF !== "all" && c.priority !== priorityF) return false;
     if (collectF !== "all" && c.collectorateInvolvement !== collectF) return false;
+    if (divisionF !== "all" && c.division !== divisionF) return false;
     if (landF === "yes" && !c.landDisputeFlag) return false;
     if (complianceF !== "all") {
       if (complianceF === "pending" && c.complianceStatus !== "Pending") return false;
@@ -65,17 +120,18 @@ export default function CaseList() {
       if (complianceF === "na" && c.complianceStatus !== "Not Applicable") return false;
     }
     return true;
-  });
+  }), [cases, search, statusF, typeF, courtF, mandalF, deptF, priorityF, collectF, complianceF, landF, divisionF]);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const paged = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
   const clearFilters = () => {
     setSearch(""); setStatusF("all"); setTypeF("all"); setCourtF("all"); setMandalF("all");
-    setDeptF("all"); setPriorityF("all"); setCollectF("all"); setComplianceF("all"); setLandF("all"); setPage(1);
+    setDeptF("all"); setPriorityF("all"); setCollectF("all"); setComplianceF("all"); setLandF("all");
+    setDivisionF("all"); setPage(1);
   };
 
-  const hasFilters = statusF !== "all" || typeF !== "all" || courtF !== "all" || mandalF !== "all" || deptF !== "all" || priorityF !== "all" || collectF !== "all" || complianceF !== "all" || landF !== "all" || search;
+  const hasFilters = statusF !== "all" || typeF !== "all" || courtF !== "all" || mandalF !== "all" || deptF !== "all" || priorityF !== "all" || collectF !== "all" || complianceF !== "all" || landF !== "all" || divisionF !== "all" || search;
 
   return (
     <AppLayout>
@@ -107,6 +163,9 @@ export default function CaseList() {
           <Select value={courtF} onValueChange={v => { setCourtF(v); setPage(1); }}><SelectTrigger className="w-[120px] h-8 text-xs"><SelectValue placeholder="Court" /></SelectTrigger>
             <SelectContent><SelectItem value="all">All Courts</SelectItem>{courtNames.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent>
           </Select>
+          <Select value={divisionF} onValueChange={v => { setDivisionF(v); setPage(1); }}><SelectTrigger className="w-[130px] h-8 text-xs"><SelectValue placeholder="Division" /></SelectTrigger>
+            <SelectContent><SelectItem value="all">All Divisions</SelectItem>{DIVISION_NAMES.map(d => <SelectItem key={d} value={d}>{d}</SelectItem>)}</SelectContent>
+          </Select>
           <Select value={mandalF} onValueChange={v => { setMandalF(v); setPage(1); }}><SelectTrigger className="w-[110px] h-8 text-xs"><SelectValue placeholder="Mandal" /></SelectTrigger>
             <SelectContent><SelectItem value="all">All Mandals</SelectItem>{mandals.map(m => <SelectItem key={m} value={m}>{m}</SelectItem>)}</SelectContent>
           </Select>
@@ -132,45 +191,65 @@ export default function CaseList() {
           <table className="w-full govt-table">
             <thead>
               <tr>
-                <th>Case No.</th><th>Title</th><th>Type</th><th>Court</th><th>Mandal</th>
-                <th>Dept</th><th>Respondent</th><th>Priority</th>
-                <th>Status</th><th>Compliance</th><th>Next Hearing</th><th>Updated</th><th className="w-12">Actions</th>
+                <th>Case No.</th>
+                <th>Title</th>
+                <th>Petitioner</th>
+                <th>Respondent</th>
+                <th>Type</th>
+                <th>Court</th>
+                <th>Division</th>
+                <th>Mandal</th>
+                <th>Dept</th>
+                <th>Priority</th>
+                <th>Status</th>
+                <th>Hearing</th>
+                <th>Counter</th>
+                <th>Pending At</th>
+                <th>Compliance</th>
+                <th className="w-12">Actions</th>
               </tr>
             </thead>
             <tbody>
-              {paged.map(c => (
-                <tr key={c.id}>
-                  <td className="font-medium text-foreground whitespace-nowrap">
-                    <Link to={`/cases/${encodeURIComponent(c.id)}`} className="hover:text-primary hover:underline">{c.caseNumber}</Link>
-                  </td>
-                  <td className="max-w-[140px] truncate">{c.title}</td>
-                  <td className="whitespace-nowrap">{c.caseType}</td>
-                  <td className="max-w-[100px] truncate">{c.court}</td>
-                  <td className="whitespace-nowrap">{c.mandal}</td>
-                  <td className="max-w-[100px] truncate">{c.department}</td>
-                  <td className="max-w-[100px] truncate">{c.respondent}</td>
-                  <td><StatusBadge value={c.priority} type="priority" size="sm" /></td>
-                  <td><StatusBadge value={c.status} size="sm" /></td>
-                  <td><StatusBadge value={c.complianceStatus} size="sm" /></td>
-                  <td className="whitespace-nowrap">{c.nextHearing}</td>
-                  <td className="whitespace-nowrap">{c.lastUpdated}</td>
-                  <td>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <button className="p-1 hover:bg-muted rounded"><MoreHorizontal className="h-4 w-4 text-muted-foreground" /></button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem asChild><Link to={`/cases/${encodeURIComponent(c.id)}`}><Eye className="h-3.5 w-3.5 mr-2" />View</Link></DropdownMenuItem>
-                        {permissions?.canEditCase && <DropdownMenuItem asChild><Link to={`/cases/${encodeURIComponent(c.id)}/edit`}><Edit className="h-3.5 w-3.5 mr-2" />Edit</Link></DropdownMenuItem>}
-                        <DropdownMenuItem asChild>
-                          <a href={HC_STATUS_URL} target="_blank" rel="noopener noreferrer"><ExternalLink className="h-3.5 w-3.5 mr-2" />HC Status</a>
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </td>
-                </tr>
-              ))}
-              {paged.length === 0 && <tr><td colSpan={13} className="text-center py-6 text-muted-foreground text-xs">No cases found matching your filters</td></tr>}
+              {paged.map(c => {
+                const hearingDays = getDaysLeft(c.nextHearing);
+                const counterDays = getDaysLeft(c.counterFilingDueDate);
+                return (
+                  <tr key={c.id}>
+                    <td className="font-medium text-foreground whitespace-nowrap">
+                      <Link to={`/cases/${encodeURIComponent(c.id)}`} className="hover:text-primary hover:underline">{c.caseNumber}</Link>
+                    </td>
+                    <td className="max-w-[130px] truncate">{c.title}</td>
+                    <td className="whitespace-nowrap"><PartyCell parties={c.petitioners} /></td>
+                    <td className="whitespace-nowrap"><PartyCell parties={c.respondents} /></td>
+                    <td className="whitespace-nowrap">{c.caseType}</td>
+                    <td className="max-w-[100px] truncate">{c.court}</td>
+                    <td className="whitespace-nowrap text-[11px]">{c.division?.replace(" Division", "")}</td>
+                    <td className="whitespace-nowrap">{c.mandal}</td>
+                    <td className="max-w-[90px] truncate">{c.department}</td>
+                    <td><StatusBadge value={c.priority} type="priority" size="sm" /></td>
+                    <td><StatusBadge value={c.status} size="sm" /></td>
+                    <td className={`whitespace-nowrap text-xs ${hearingDays.className}`}>{hearingDays.label}</td>
+                    <td className={`whitespace-nowrap text-xs ${counterDays.className}`}>{counterDays.label}</td>
+                    <td><StatusBadge value={c.pendingAtLevel} size="sm" /></td>
+                    <td><StatusBadge value={c.complianceStatus} size="sm" /></td>
+                    <td>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <button className="p-1 hover:bg-muted rounded"><MoreHorizontal className="h-4 w-4 text-muted-foreground" /></button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem asChild><Link to={`/cases/${encodeURIComponent(c.id)}`}><Eye className="h-3.5 w-3.5 mr-2" />View</Link></DropdownMenuItem>
+                          {permissions?.canEditCase && <DropdownMenuItem asChild><Link to={`/cases/${encodeURIComponent(c.id)}/edit`}><Edit className="h-3.5 w-3.5 mr-2" />Edit</Link></DropdownMenuItem>}
+                          <DropdownMenuItem asChild>
+                            <a href={HC_STATUS_URL} target="_blank" rel="noopener noreferrer"><ExternalLink className="h-3.5 w-3.5 mr-2" />HC Status</a>
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </td>
+                  </tr>
+                );
+              })}
+              {paged.length === 0 && <tr><td colSpan={16} className="text-center py-6 text-muted-foreground text-xs">No cases found matching your filters</td></tr>}
             </tbody>
           </table>
         </div>

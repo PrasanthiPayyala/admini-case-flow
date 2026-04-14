@@ -147,6 +147,16 @@ function makeCase(
   base: Omit<CaseRecord, "petitioners" | "respondents" | "coRespondentParties" | "division" | "counterDraftStatus" | "gpApprovalStatus" | "collectorApprovalStatus" | "counterFilingDueDate" | "pendingAtLevel" | "interimOrderStatus" | "finalJudgmentStatus" | "finalActionStatus">,
   extra?: Partial<CaseRecord>
 ): CaseRecord {
+  // Auto-generate a counterFilingDueDate for Counter Pending / Hearing Scheduled cases
+  let autoCounterDueDate = "";
+  if (base.status === "Counter Pending" || base.status === "Hearing Scheduled") {
+    // Set counter due 7 days before next hearing if available
+    if (base.nextHearing && base.nextHearing !== "-") {
+      const nh = new Date(base.nextHearing);
+      nh.setDate(nh.getDate() - 7);
+      autoCounterDueDate = nh.toISOString().split("T")[0];
+    }
+  }
   return {
     ...base,
     division: getDivision(base.mandal),
@@ -156,7 +166,7 @@ function makeCase(
     counterDraftStatus: base.status === "Counter Pending" ? "Pending" : base.status === "Closed" ? "Filed" : "Not Started",
     gpApprovalStatus: "Not Applicable",
     collectorApprovalStatus: "Not Applicable",
-    counterFilingDueDate: "",
+    counterFilingDueDate: autoCounterDueDate,
     pendingAtLevel: base.status === "Counter Pending" ? "Counter Filing" : base.complianceRequired && base.complianceStatus === "Pending" ? "Compliance" : base.status === "Closed" ? "Closed" : "Hearing Update",
     interimOrderStatus: base.orderPassed ? "Received" : "Not Applicable",
     finalJudgmentStatus: base.status === "Closed" ? "Received" : "Pending",
@@ -181,7 +191,15 @@ export const cases: CaseRecord[] = [
     landDisputeFlag: true, orderPassed: true, orderSummary: "Interim stay on acquisition proceedings granted",
     complianceRequired: true, complianceStatus: "Pending", complianceDueDate: "2026-04-30",
     complianceCompletedDate: "", lastUpdated: "2026-04-08"
-  }, { counterDraftStatus: "Filed", gpApprovalStatus: "Approved", collectorApprovalStatus: "Approved", pendingAtLevel: "Compliance" }),
+  }, {
+    counterDraftStatus: "Filed", gpApprovalStatus: "Approved", collectorApprovalStatus: "Approved", pendingAtLevel: "Compliance",
+    counterFilingDueDate: "2026-04-10",
+    petitioners: [
+      { name: "Ramesh Kumar Reddy", type: "Individual", department: "", remarks: "Primary petitioner" },
+      { name: "Smt. Padmavathi", type: "Individual", department: "", remarks: "Co-owner of Survey No. 145" },
+      { name: "K. Narasimha", type: "Individual", department: "", remarks: "Adjacent land owner" },
+    ],
+  }),
   makeCase({
     id: "LCMS/YBG/2024/002", caseNumber: "OS 118/2023", title: "Service Matter - Suspension of Ministerial Staff",
     court: "District Court, Bhongir", courtType: "District Court", caseType: "Service Matter",
@@ -197,7 +215,9 @@ export const cases: CaseRecord[] = [
     landDisputeFlag: false, orderPassed: false, orderSummary: "",
     complianceRequired: false, complianceStatus: "Not Applicable", complianceDueDate: "",
     complianceCompletedDate: "", lastUpdated: "2026-04-09"
-  }, { pendingAtLevel: "Counter Filing", counterDraftStatus: "Draft Ready", gpApprovalStatus: "Pending" }),
+  }, { pendingAtLevel: "Counter Filing", counterDraftStatus: "Draft Ready", gpApprovalStatus: "Pending",
+    counterFilingDueDate: "2026-04-15",
+  }),
   makeCase({
     id: "LCMS/YBG/2024/003", caseNumber: "CCC 89/2024", title: "Consumer Complaint - Water Supply Irregularity",
     court: "Consumer Forum", courtType: "Consumer Forum", caseType: "Consumer Matter",
@@ -213,7 +233,13 @@ export const cases: CaseRecord[] = [
     landDisputeFlag: false, orderPassed: false, orderSummary: "",
     complianceRequired: false, complianceStatus: "Not Applicable", complianceDueDate: "",
     complianceCompletedDate: "", lastUpdated: "2026-04-07"
-  }, { pendingAtLevel: "Department" }),
+  }, {
+    pendingAtLevel: "Department",
+    respondents: [
+      { name: "Municipal Commissioner, Bhongir", type: "Government", department: "Municipal Administration", remarks: "" },
+      { name: "Executive Engineer, HMWSSB", type: "Government", department: "Irrigation", remarks: "Water supply wing" },
+    ],
+  }),
   makeCase({
     id: "LCMS/YBG/2024/004", caseNumber: "WP 7892/2023", title: "Encroachment Removal - Govt Land, Choutuppal",
     court: "Telangana High Court", courtType: "High Court", caseType: "Encroachment Matter",
@@ -229,7 +255,18 @@ export const cases: CaseRecord[] = [
     landDisputeFlag: true, orderPassed: true, orderSummary: "Status quo ordered on encroached land",
     complianceRequired: true, complianceStatus: "Partially Complied", complianceDueDate: "2026-04-15",
     complianceCompletedDate: "", lastUpdated: "2026-04-09"
-  }, { counterDraftStatus: "Pending", gpApprovalStatus: "Pending", pendingAtLevel: "GP Approval" }),
+  }, { counterDraftStatus: "Pending", gpApprovalStatus: "Pending", pendingAtLevel: "GP Approval",
+    counterFilingDueDate: "2026-04-12",
+    petitioners: [
+      { name: "Telangana State Govt", type: "Government", department: "Revenue Department", remarks: "" },
+      { name: "District Collector, Yadadri Bhuvanagiri", type: "Government", department: "Collectorate Legal Cell", remarks: "Co-petitioner" },
+    ],
+    respondents: [
+      { name: "Various Encroachers", type: "Individual", department: "", remarks: "Primary respondents" },
+      { name: "Gram Panchayat, Choutuppal", type: "Government", department: "Panchayat Raj", remarks: "" },
+      { name: "Tahsildar, Choutuppal", type: "Government", department: "Tahsildar Office", remarks: "" },
+    ],
+  }),
   makeCase({
     id: "LCMS/YBG/2024/005", caseNumber: "TA 456/2023", title: "Tribunal Appeal - PRC Arrears Claim",
     court: "Revenue Tribunal", courtType: "Tribunal", caseType: "Tribunal Matter",
@@ -325,7 +362,18 @@ export const cases: CaseRecord[] = [
     landDisputeFlag: true, orderPassed: false, orderSummary: "",
     complianceRequired: false, complianceStatus: "Not Applicable", complianceDueDate: "",
     complianceCompletedDate: "", lastUpdated: "2026-04-06"
-  }, { counterDraftStatus: "Draft Ready", gpApprovalStatus: "Pending", pendingAtLevel: "GP Approval" }),
+  }, { counterDraftStatus: "Draft Ready", gpApprovalStatus: "Pending", pendingAtLevel: "GP Approval",
+    counterFilingDueDate: "2026-04-16",
+    respondents: [
+      { name: "District Collector, Yadadri Bhuvanagiri", type: "Government", department: "Revenue Department", remarks: "" },
+      { name: "Joint Collector Office", type: "Government", department: "Collectorate Legal Cell", remarks: "" },
+      { name: "Revenue Divisional Officer", type: "Government", department: "Revenue Department", remarks: "" },
+    ],
+    petitioners: [
+      { name: "P. Venkat Reddy", type: "Individual", department: "", remarks: "Primary petitioner" },
+      { name: "M. Srinivasa Rao", type: "Individual", department: "", remarks: "Affected farmer" },
+    ],
+  }),
   makeCase({
     id: "LCMS/YBG/2024/011", caseNumber: "WP 8901/2023", title: "Encroachment on Assigned Land - Yadagirigutta Temple Area",
     court: "Telangana High Court", courtType: "High Court", caseType: "Encroachment Matter",
@@ -485,7 +533,7 @@ export const cases: CaseRecord[] = [
     landDisputeFlag: true, orderPassed: true, orderSummary: "Interim stay granted pending hearing",
     complianceRequired: true, complianceStatus: "Pending", complianceDueDate: "2026-04-30",
     complianceCompletedDate: "", lastUpdated: "2026-04-09"
-  }, { counterDraftStatus: "Draft Ready", gpApprovalStatus: "Pending", pendingAtLevel: "GP Approval" }),
+  }, { counterDraftStatus: "Draft Ready", gpApprovalStatus: "Pending", pendingAtLevel: "GP Approval", counterFilingDueDate: "2026-04-12" }),
   makeCase({
     id: "LCMS/YBG/2025/021", caseNumber: "CS 234/2025", title: "Civil Suit - Property Dispute, Bibinagar",
     court: "Civil Court, Bhongir", courtType: "Civil Court", caseType: "Civil Suit",
@@ -517,6 +565,13 @@ export const cases: CaseRecord[] = [
     landDisputeFlag: true, orderPassed: true, orderSummary: "Joint survey ordered within 45 days",
     complianceRequired: true, complianceStatus: "Partially Complied", complianceDueDate: "2026-05-06",
     complianceCompletedDate: "", lastUpdated: "2026-04-09"
+  }, {
+    respondents: [
+      { name: "District Collector, Yadadri Bhuvanagiri", type: "Government", department: "Revenue Department", remarks: "" },
+      { name: "Survey Department", type: "Government", department: "Survey & Settlement", remarks: "" },
+      { name: "Tahsildar, Yadagirigutta", type: "Government", department: "Tahsildar Office", remarks: "" },
+    ],
+    counterFilingDueDate: "2026-04-14",
   }),
   makeCase({
     id: "LCMS/YBG/2025/023", caseNumber: "OS 345/2025", title: "Irrigation Canal Land Dispute - Addagudur",
