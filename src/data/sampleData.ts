@@ -362,7 +362,18 @@ export const cases: CaseRecord[] = [
     landDisputeFlag: true, orderPassed: false, orderSummary: "",
     complianceRequired: false, complianceStatus: "Not Applicable", complianceDueDate: "",
     complianceCompletedDate: "", lastUpdated: "2026-04-06"
-  }, { counterDraftStatus: "Draft Ready", gpApprovalStatus: "Pending", pendingAtLevel: "GP Approval" }),
+  }, { counterDraftStatus: "Draft Ready", gpApprovalStatus: "Pending", pendingAtLevel: "GP Approval",
+    counterFilingDueDate: "2026-04-16",
+    respondents: [
+      { name: "District Collector, Yadadri Bhuvanagiri", type: "Government", department: "Revenue Department", remarks: "" },
+      { name: "Joint Collector Office", type: "Government", department: "Collectorate Legal Cell", remarks: "" },
+      { name: "Revenue Divisional Officer", type: "Government", department: "Revenue Department", remarks: "" },
+    ],
+    petitioners: [
+      { name: "P. Venkat Reddy", type: "Individual", department: "", remarks: "Primary petitioner" },
+      { name: "M. Srinivasa Rao", type: "Individual", department: "", remarks: "Affected farmer" },
+    ],
+  }),
   makeCase({
     id: "LCMS/YBG/2024/011", caseNumber: "WP 8901/2023", title: "Encroachment on Assigned Land - Yadagirigutta Temple Area",
     court: "Telangana High Court", courtType: "High Court", caseType: "Encroachment Matter",
