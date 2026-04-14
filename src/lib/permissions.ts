@@ -2,16 +2,31 @@ export type AppRole =
   | "Super Admin"
   | "Admin"
   | "District Collector"
+  | "Additional Collector (Revenue)"
+  | "Additional Collector (Local Bodies)"
+  | "DRO"
+  | "Administrative Officer"
   | "District Legal Officer"
+  | "Section C Officer"
+  | "Section D Officer"
+  | "Section E Officer"
+  | "Section G Officer"
+  | "RDO Bhongir"
+  | "RDO Choutuppal"
   | "High Court Representative Officer"
   | "Department Nodal Officer"
+  | "Case Handling Officer"
   | "Mandal-Level User"
   | "Data Entry Operator"
   | "Read-Only Viewer";
 
 export const ALL_ROLES: AppRole[] = [
-  "Super Admin", "Admin", "District Collector", "District Legal Officer",
-  "High Court Representative Officer", "Department Nodal Officer",
+  "Super Admin", "Admin", "District Collector",
+  "Additional Collector (Revenue)", "Additional Collector (Local Bodies)",
+  "DRO", "Administrative Officer",
+  "District Legal Officer", "Section C Officer", "Section D Officer", "Section E Officer", "Section G Officer",
+  "RDO Bhongir", "RDO Choutuppal",
+  "High Court Representative Officer", "Department Nodal Officer", "Case Handling Officer",
   "Mandal-Level User", "Data Entry Operator", "Read-Only Viewer",
 ];
 
@@ -40,143 +55,183 @@ export interface Permissions {
   canViewDocuments: boolean;
   canUploadDocuments: boolean;
   canViewAlerts: boolean;
-  visibleSidebarSections: { main: boolean; admin: boolean; account: boolean };
+  canApproveGP: boolean;
+  canApproveCollector: boolean;
+  visibleSidebarSections: { main: boolean; admin: boolean; account: boolean; departments: boolean; divisions: boolean; collectorQuickAccess: boolean };
   visibleMenuItems: string[];
 }
 
 const FULL_MENU = [
-  "/", "/cases", "/appeals", "/hearings", "/court-liaison", "/compliance",
+  "/", "/cases", "/cases/fresh", "/cases/ongoing", "/cases/closed",
+  "/appeals", "/hearings", "/court-liaison", "/compliance",
   "/alerts", "/reports", "/users", "/roles", "/documents", "/audit-logs",
   "/settings", "/profile", "/change-password",
 ];
 
+const MAIN_MENU = [
+  "/", "/cases", "/cases/fresh", "/cases/ongoing", "/cases/closed",
+  "/appeals", "/hearings", "/court-liaison", "/compliance",
+  "/alerts", "/reports", "/documents", "/profile", "/change-password",
+];
+
+const COLLECTOR_MENU = [
+  "/", "/cases", "/cases/fresh", "/cases/ongoing", "/cases/closed",
+  "/appeals", "/hearings", "/court-liaison", "/compliance",
+  "/alerts", "/reports", "/documents", "/audit-logs", "/profile", "/change-password",
+];
+
+const baseSidebar = { main: true, admin: false, account: true, departments: true, divisions: true, collectorQuickAccess: false };
+
+function makePerms(overrides: Partial<Permissions>): Permissions {
+  return {
+    canCreateCase: false, canEditCase: false, canDeleteCase: false,
+    canCreateUser: false, canEditUser: false, canManageRoles: false,
+    canViewDashboard: true, canViewCases: true, canViewHearings: true,
+    canUpdateHearing: false, canViewAppeals: true, canCreateAppeal: false,
+    canViewReports: true, canExportReports: false, canBulkUpload: false,
+    canViewAuditLogs: false, canManageSettings: false,
+    canViewCompliance: true, canUpdateCompliance: false,
+    canViewCourtLiaison: true, canUpdateCourtLiaison: false,
+    canViewDocuments: true, canUploadDocuments: false, canViewAlerts: true,
+    canApproveGP: false, canApproveCollector: false,
+    visibleSidebarSections: { ...baseSidebar },
+    visibleMenuItems: MAIN_MENU,
+    ...overrides,
+  };
+}
+
 export function getPermissions(role: AppRole): Permissions {
   switch (role) {
     case "Super Admin":
-      return {
+      return makePerms({
         canCreateCase: true, canEditCase: true, canDeleteCase: true,
         canCreateUser: true, canEditUser: true, canManageRoles: true,
-        canViewDashboard: true, canViewCases: true, canViewHearings: true,
-        canUpdateHearing: true, canViewAppeals: true, canCreateAppeal: true,
-        canViewReports: true, canExportReports: true, canBulkUpload: true,
+        canUpdateHearing: true, canCreateAppeal: true,
+        canExportReports: true, canBulkUpload: true,
         canViewAuditLogs: true, canManageSettings: true,
-        canViewCompliance: true, canUpdateCompliance: true,
-        canViewCourtLiaison: true, canUpdateCourtLiaison: true,
-        canViewDocuments: true, canUploadDocuments: true, canViewAlerts: true,
-        visibleSidebarSections: { main: true, admin: true, account: true },
+        canUpdateCompliance: true, canUpdateCourtLiaison: true,
+        canUploadDocuments: true, canApproveGP: true, canApproveCollector: true,
+        visibleSidebarSections: { main: true, admin: true, account: true, departments: true, divisions: true, collectorQuickAccess: true },
         visibleMenuItems: FULL_MENU,
-      };
+      });
     case "Admin":
-      return {
+      return makePerms({
         canCreateCase: true, canEditCase: true, canDeleteCase: true,
-        canCreateUser: true, canEditUser: true, canManageRoles: false,
-        canViewDashboard: true, canViewCases: true, canViewHearings: true,
-        canUpdateHearing: true, canViewAppeals: true, canCreateAppeal: true,
-        canViewReports: true, canExportReports: true, canBulkUpload: true,
+        canCreateUser: true, canEditUser: true,
+        canUpdateHearing: true, canCreateAppeal: true,
+        canExportReports: true, canBulkUpload: true,
         canViewAuditLogs: true, canManageSettings: true,
-        canViewCompliance: true, canUpdateCompliance: true,
-        canViewCourtLiaison: true, canUpdateCourtLiaison: true,
-        canViewDocuments: true, canUploadDocuments: true, canViewAlerts: true,
-        visibleSidebarSections: { main: true, admin: true, account: true },
+        canUpdateCompliance: true, canUpdateCourtLiaison: true,
+        canUploadDocuments: true, canApproveGP: true,
+        visibleSidebarSections: { main: true, admin: true, account: true, departments: true, divisions: true, collectorQuickAccess: true },
         visibleMenuItems: FULL_MENU,
-      };
+      });
     case "District Collector":
-      return {
-        canCreateCase: false, canEditCase: false, canDeleteCase: false,
-        canCreateUser: false, canEditUser: false, canManageRoles: false,
-        canViewDashboard: true, canViewCases: true, canViewHearings: true,
-        canUpdateHearing: false, canViewAppeals: true, canCreateAppeal: false,
-        canViewReports: true, canExportReports: true, canBulkUpload: false,
-        canViewAuditLogs: true, canManageSettings: false,
-        canViewCompliance: true, canUpdateCompliance: false,
-        canViewCourtLiaison: true, canUpdateCourtLiaison: false,
-        canViewDocuments: true, canUploadDocuments: false, canViewAlerts: true,
-        visibleSidebarSections: { main: true, admin: false, account: true },
-        visibleMenuItems: ["/", "/cases", "/appeals", "/hearings", "/court-liaison", "/compliance", "/alerts", "/reports", "/documents", "/audit-logs", "/profile", "/change-password"],
-      };
+      return makePerms({
+        canExportReports: true, canViewAuditLogs: true,
+        canApproveCollector: true,
+        visibleSidebarSections: { main: true, admin: false, account: true, departments: true, divisions: true, collectorQuickAccess: true },
+        visibleMenuItems: COLLECTOR_MENU,
+      });
+    case "Additional Collector (Revenue)":
+      return makePerms({
+        canEditCase: true, canExportReports: true, canApproveGP: true,
+        canUpdateCompliance: true, canUploadDocuments: true,
+        visibleSidebarSections: { main: true, admin: false, account: true, departments: true, divisions: true, collectorQuickAccess: true },
+        visibleMenuItems: COLLECTOR_MENU,
+      });
+    case "Additional Collector (Local Bodies)":
+      return makePerms({
+        canEditCase: true, canExportReports: true, canApproveGP: true,
+        canUpdateCompliance: true, canUploadDocuments: true,
+        visibleSidebarSections: { main: true, admin: false, account: true, departments: true, divisions: true, collectorQuickAccess: true },
+        visibleMenuItems: COLLECTOR_MENU,
+      });
+    case "DRO":
+      return makePerms({
+        canEditCase: true, canExportReports: true,
+        canUpdateCompliance: true, canUploadDocuments: true,
+        visibleSidebarSections: { main: true, admin: false, account: true, departments: true, divisions: true, collectorQuickAccess: true },
+        visibleMenuItems: MAIN_MENU,
+      });
+    case "Administrative Officer":
+      return makePerms({
+        canEditCase: true, canExportReports: true,
+        canUpdateCompliance: true, canUploadDocuments: true,
+        visibleSidebarSections: { main: true, admin: false, account: true, departments: true, divisions: false, collectorQuickAccess: true },
+        visibleMenuItems: MAIN_MENU,
+      });
     case "District Legal Officer":
-      return {
-        canCreateCase: true, canEditCase: true, canDeleteCase: false,
-        canCreateUser: false, canEditUser: false, canManageRoles: false,
-        canViewDashboard: true, canViewCases: true, canViewHearings: true,
-        canUpdateHearing: true, canViewAppeals: true, canCreateAppeal: true,
-        canViewReports: true, canExportReports: true, canBulkUpload: true,
-        canViewAuditLogs: false, canManageSettings: false,
-        canViewCompliance: true, canUpdateCompliance: true,
-        canViewCourtLiaison: true, canUpdateCourtLiaison: true,
-        canViewDocuments: true, canUploadDocuments: true, canViewAlerts: true,
-        visibleSidebarSections: { main: true, admin: false, account: true },
-        visibleMenuItems: ["/", "/cases", "/appeals", "/hearings", "/court-liaison", "/compliance", "/alerts", "/reports", "/documents", "/profile", "/change-password"],
-      };
+      return makePerms({
+        canCreateCase: true, canEditCase: true,
+        canUpdateHearing: true, canCreateAppeal: true,
+        canExportReports: true, canBulkUpload: true,
+        canUpdateCompliance: true, canUpdateCourtLiaison: true,
+        canUploadDocuments: true, canApproveGP: true,
+        visibleSidebarSections: { main: true, admin: false, account: true, departments: true, divisions: true, collectorQuickAccess: true },
+        visibleMenuItems: [...MAIN_MENU, "/audit-logs"],
+      });
+    case "Section C Officer":
+    case "Section D Officer":
+    case "Section E Officer":
+    case "Section G Officer":
+      return makePerms({
+        canCreateCase: true, canEditCase: true,
+        canUpdateHearing: true, canCreateAppeal: true,
+        canUpdateCompliance: true, canUploadDocuments: true,
+        visibleSidebarSections: { main: true, admin: false, account: true, departments: true, divisions: false, collectorQuickAccess: false },
+        visibleMenuItems: MAIN_MENU,
+      });
+    case "RDO Bhongir":
+    case "RDO Choutuppal":
+      return makePerms({
+        canEditCase: true, canExportReports: true,
+        canUpdateCompliance: true, canUploadDocuments: true,
+        visibleSidebarSections: { main: true, admin: false, account: true, departments: true, divisions: true, collectorQuickAccess: false },
+        visibleMenuItems: MAIN_MENU,
+      });
     case "High Court Representative Officer":
-      return {
-        canCreateCase: false, canEditCase: false, canDeleteCase: false,
-        canCreateUser: false, canEditUser: false, canManageRoles: false,
-        canViewDashboard: true, canViewCases: true, canViewHearings: true,
-        canUpdateHearing: true, canViewAppeals: true, canCreateAppeal: false,
-        canViewReports: false, canExportReports: false, canBulkUpload: false,
-        canViewAuditLogs: false, canManageSettings: false,
-        canViewCompliance: true, canUpdateCompliance: true,
-        canViewCourtLiaison: true, canUpdateCourtLiaison: true,
-        canViewDocuments: true, canUploadDocuments: true, canViewAlerts: true,
-        visibleSidebarSections: { main: true, admin: false, account: true },
+      return makePerms({
+        canUpdateHearing: true,
+        canUpdateCompliance: true, canUpdateCourtLiaison: true,
+        canUploadDocuments: true,
+        visibleSidebarSections: { main: true, admin: false, account: true, departments: false, divisions: false, collectorQuickAccess: false },
         visibleMenuItems: ["/", "/cases", "/hearings", "/court-liaison", "/compliance", "/alerts", "/documents", "/profile", "/change-password"],
-      };
+      });
     case "Department Nodal Officer":
-      return {
-        canCreateCase: false, canEditCase: true, canDeleteCase: false,
-        canCreateUser: false, canEditUser: false, canManageRoles: false,
-        canViewDashboard: true, canViewCases: true, canViewHearings: true,
-        canUpdateHearing: false, canViewAppeals: false, canCreateAppeal: false,
-        canViewReports: true, canExportReports: false, canBulkUpload: false,
-        canViewAuditLogs: false, canManageSettings: false,
-        canViewCompliance: true, canUpdateCompliance: true,
-        canViewCourtLiaison: false, canUpdateCourtLiaison: false,
-        canViewDocuments: true, canUploadDocuments: true, canViewAlerts: true,
-        visibleSidebarSections: { main: true, admin: false, account: true },
+      return makePerms({
+        canEditCase: true,
+        canUpdateCompliance: true, canUploadDocuments: true,
+        visibleSidebarSections: { main: true, admin: false, account: true, departments: true, divisions: false, collectorQuickAccess: false },
         visibleMenuItems: ["/", "/cases", "/hearings", "/compliance", "/alerts", "/reports", "/documents", "/profile", "/change-password"],
-      };
+      });
+    case "Case Handling Officer":
+      return makePerms({
+        canCreateCase: true, canEditCase: true,
+        canUpdateHearing: true, canUpdateCompliance: true, canUploadDocuments: true,
+        visibleSidebarSections: { main: true, admin: false, account: true, departments: true, divisions: false, collectorQuickAccess: false },
+        visibleMenuItems: MAIN_MENU,
+      });
     case "Mandal-Level User":
-      return {
-        canCreateCase: true, canEditCase: true, canDeleteCase: false,
-        canCreateUser: false, canEditUser: false, canManageRoles: false,
-        canViewDashboard: true, canViewCases: true, canViewHearings: true,
-        canUpdateHearing: false, canViewAppeals: false, canCreateAppeal: false,
-        canViewReports: false, canExportReports: false, canBulkUpload: false,
-        canViewAuditLogs: false, canManageSettings: false,
-        canViewCompliance: true, canUpdateCompliance: false,
-        canViewCourtLiaison: false, canUpdateCourtLiaison: false,
-        canViewDocuments: true, canUploadDocuments: true, canViewAlerts: true,
-        visibleSidebarSections: { main: true, admin: false, account: true },
+      return makePerms({
+        canCreateCase: true, canEditCase: true,
+        canUploadDocuments: true,
+        visibleSidebarSections: { main: true, admin: false, account: true, departments: false, divisions: false, collectorQuickAccess: false },
         visibleMenuItems: ["/", "/cases", "/hearings", "/compliance", "/alerts", "/documents", "/profile", "/change-password"],
-      };
+      });
     case "Data Entry Operator":
-      return {
-        canCreateCase: true, canEditCase: true, canDeleteCase: false,
-        canCreateUser: false, canEditUser: false, canManageRoles: false,
-        canViewDashboard: true, canViewCases: true, canViewHearings: true,
-        canUpdateHearing: false, canViewAppeals: false, canCreateAppeal: false,
-        canViewReports: false, canExportReports: false, canBulkUpload: true,
-        canViewAuditLogs: false, canManageSettings: false,
-        canViewCompliance: false, canUpdateCompliance: false,
-        canViewCourtLiaison: false, canUpdateCourtLiaison: false,
-        canViewDocuments: true, canUploadDocuments: true, canViewAlerts: false,
-        visibleSidebarSections: { main: true, admin: false, account: true },
+      return makePerms({
+        canCreateCase: true, canEditCase: true, canBulkUpload: true,
+        canUploadDocuments: true,
+        canViewAppeals: false, canViewCompliance: false, canViewCourtLiaison: false, canViewAlerts: false,
+        visibleSidebarSections: { main: true, admin: false, account: true, departments: false, divisions: false, collectorQuickAccess: false },
         visibleMenuItems: ["/", "/cases", "/documents", "/profile", "/change-password"],
-      };
+      });
     case "Read-Only Viewer":
-      return {
-        canCreateCase: false, canEditCase: false, canDeleteCase: false,
-        canCreateUser: false, canEditUser: false, canManageRoles: false,
-        canViewDashboard: true, canViewCases: true, canViewHearings: true,
-        canUpdateHearing: false, canViewAppeals: true, canCreateAppeal: false,
-        canViewReports: true, canExportReports: false, canBulkUpload: false,
-        canViewAuditLogs: false, canManageSettings: false,
-        canViewCompliance: true, canUpdateCompliance: false,
-        canViewCourtLiaison: false, canUpdateCourtLiaison: false,
-        canViewDocuments: true, canUploadDocuments: false, canViewAlerts: true,
-        visibleSidebarSections: { main: true, admin: false, account: true },
+      return makePerms({
+        canExportReports: false,
+        visibleSidebarSections: { main: true, admin: false, account: true, departments: true, divisions: true, collectorQuickAccess: false },
         visibleMenuItems: ["/", "/cases", "/appeals", "/hearings", "/compliance", "/alerts", "/reports", "/documents", "/profile", "/change-password"],
-      };
+      });
   }
 }
