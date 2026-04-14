@@ -15,6 +15,9 @@ import CaseDetails from "./pages/cases/CaseDetails";
 import AddCase from "./pages/cases/AddCase";
 import EditCase from "./pages/cases/EditCase";
 import BulkUpload from "./pages/cases/BulkUpload";
+import FreshCases from "./pages/cases/FreshCases";
+import OngoingCases from "./pages/cases/OngoingCases";
+import ClosedCases from "./pages/cases/ClosedCases";
 import AppealList from "./pages/appeals/AppealList";
 import AddAppeal from "./pages/appeals/AddAppeal";
 import HearingList from "./pages/hearings/HearingList";
@@ -51,6 +54,9 @@ function AppRoutes() {
       <Route path="/cases" element={<ProtectedRoute><CaseList /></ProtectedRoute>} />
       <Route path="/cases/new" element={<ProtectedRoute><AddCase /></ProtectedRoute>} />
       <Route path="/cases/bulk-upload" element={<ProtectedRoute><BulkUpload /></ProtectedRoute>} />
+      <Route path="/cases/fresh" element={<ProtectedRoute><FreshCases /></ProtectedRoute>} />
+      <Route path="/cases/ongoing" element={<ProtectedRoute><OngoingCases /></ProtectedRoute>} />
+      <Route path="/cases/closed" element={<ProtectedRoute><ClosedCases /></ProtectedRoute>} />
       <Route path="/cases/:id" element={<ProtectedRoute><CaseDetails /></ProtectedRoute>} />
       <Route path="/cases/:id/edit" element={<ProtectedRoute><EditCase /></ProtectedRoute>} />
       <Route path="/appeals" element={<ProtectedRoute><AppealList /></ProtectedRoute>} />
