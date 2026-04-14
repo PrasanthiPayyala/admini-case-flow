@@ -40,7 +40,7 @@ export default function AddCase() {
       return;
     }
     const id = generateCaseId();
-    addCase({
+    const caseRecord: import("@/data/sampleData").CaseRecord = {
       id,
       caseNumber: form.caseNumber,
       title: form.title,
@@ -50,8 +50,12 @@ export default function AddCase() {
       petitioner: form.petitioner,
       respondent: form.respondent,
       coRespondents: coRespondents.filter(c => c.trim()),
+      petitioners: [{ name: form.petitioner, type: "Individual", department: "", remarks: "" }],
+      respondents: [{ name: form.respondent, type: "Government", department: form.department, remarks: "" }],
+      coRespondentParties: coRespondents.filter(c => c.trim()).map(cr => ({ name: cr, type: "Government", department: "", remarks: "" })),
       department: form.department,
       mandal: form.mandal,
+      division: "",
       filingDate: form.filingDate,
       filingYear: form.filingYear || form.filingDate?.slice(0, 4) || "",
       assignedOfficer: form.assignedOfficer,
@@ -74,7 +78,16 @@ export default function AddCase() {
       complianceDueDate: "",
       complianceCompletedDate: "",
       lastUpdated: new Date().toISOString().slice(0, 10),
-    });
+      counterDraftStatus: "Not Started",
+      gpApprovalStatus: "Not Applicable",
+      collectorApprovalStatus: "Not Applicable",
+      counterFilingDueDate: "",
+      pendingAtLevel: "Department",
+      interimOrderStatus: "Not Applicable",
+      finalJudgmentStatus: "Pending",
+      finalActionStatus: "In Progress",
+    };
+    addCase(caseRecord);
     toast({ title: "Case registered", description: `${form.caseNumber} created successfully.` });
     navigate("/cases");
   };

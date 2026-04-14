@@ -69,11 +69,15 @@ export default function BulkUpload() {
 
   const handleImport = () => {
     const valid = rows.filter(r => r.status === "Valid");
-    const newCases = valid.map(r => ({
+    const newCases: import("@/data/sampleData").CaseRecord[] = valid.map(r => ({
       id: generateCaseId(),
       caseNumber: r.caseNumber, title: r.title, court: r.court, courtType: "",
       caseType: r.caseType, petitioner: r.petitioner, respondent: r.respondent,
       coRespondents: [] as string[], department: r.department, mandal: r.mandal,
+      petitioners: [{ name: r.petitioner, type: "Individual", department: "", remarks: "" }],
+      respondents: [{ name: r.respondent, type: "Government", department: r.department, remarks: "" }],
+      coRespondentParties: [] as import("@/data/sampleData").Party[],
+      division: "",
       filingDate: r.filingDate, filingYear: r.filingDate?.slice(0, 4) || "",
       assignedOfficer: r.raw["Assigned Officer"] || "", priority: r.priority,
       status: "Fresh", lastHearing: "-", nextHearing: "-",
@@ -85,6 +89,10 @@ export default function BulkUpload() {
       orderPassed: false, orderSummary: "", complianceRequired: false,
       complianceStatus: "Not Applicable", complianceDueDate: "", complianceCompletedDate: "",
       lastUpdated: new Date().toISOString().slice(0, 10),
+      counterDraftStatus: "Not Started", gpApprovalStatus: "Not Applicable",
+      collectorApprovalStatus: "Not Applicable", counterFilingDueDate: "",
+      pendingAtLevel: "Department", interimOrderStatus: "Not Applicable",
+      finalJudgmentStatus: "Pending", finalActionStatus: "In Progress",
     }));
     addCases(newCases);
     setImported(valid.length);
