@@ -1,7 +1,7 @@
 import { AppLayout } from "@/components/layout/AppLayout";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { StatusBadge } from "@/components/shared/StatusBadge";
-import { useData } from "@/contexts/DataContext";
+import { useRoleFilter } from "@/hooks/useRoleFilter";
 import { useAuth } from "@/contexts/AuthContext";
 import { Link } from "react-router-dom";
 import { Eye, Edit, MoreHorizontal, ExternalLink } from "lucide-react";
@@ -9,9 +9,9 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { HC_STATUS_URL } from "@/data/sampleData";
 
 export default function OngoingCases() {
-  const { cases } = useData();
+  const { filteredCases } = useRoleFilter();
   const { permissions } = useAuth();
-  const ongoing = cases.filter(c => !["Fresh", "Closed"].includes(c.status));
+  const ongoing = filteredCases.filter(c => !["Fresh", "Closed"].includes(c.status));
 
   return (
     <AppLayout>

@@ -1,14 +1,14 @@
 import { AppLayout } from "@/components/layout/AppLayout";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { StatusBadge } from "@/components/shared/StatusBadge";
-import { useData } from "@/contexts/DataContext";
+import { useRoleFilter } from "@/hooks/useRoleFilter";
 import { Link } from "react-router-dom";
 import { Eye, MoreHorizontal } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 
 export default function ClosedCases() {
-  const { cases } = useData();
-  const closed = cases.filter(c => c.status === "Closed");
+  const { filteredCases } = useRoleFilter();
+  const closed = filteredCases.filter(c => c.status === "Closed");
 
   return (
     <AppLayout>
