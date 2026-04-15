@@ -8,7 +8,7 @@ import {
 } from "lucide-react";
 import { useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
-import { useData } from "@/contexts/DataContext";
+import { useRoleFilter } from "@/hooks/useRoleFilter";
 import { departments, divisions } from "@/data/sampleData";
 
 const mainNav = [
@@ -47,7 +47,7 @@ export function AppSidebar({ collapsed, onToggle }: AppSidebarProps) {
   const location = useLocation();
   const navigate = useNavigate();
   const { permissions, logout } = useAuth();
-  const { cases } = useData();
+  const { filteredCases: cases } = useRoleFilter();
   const [openSections, setOpenSections] = useState<Record<string, boolean>>({
     main: true, admin: true, account: false, departments: false, divisions: false, collectorQuickAccess: false,
   });

@@ -2,9 +2,11 @@ import { AppLayout } from "@/components/layout/AppLayout";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { HC_STATUS_URL } from "@/data/sampleData";
+import type { Party } from "@/data/sampleData";
 import { useParams, Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Edit, FileText, Calendar, ArrowLeft, ExternalLink, ShieldCheck, Plus, Printer, Scale, Users, Clock, Gavel, FolderOpen, Activity, Briefcase } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Edit, FileText, Calendar, ArrowLeft, ExternalLink, ShieldCheck, Plus, Printer, Scale, Users, Clock, Gavel, FolderOpen, Activity, Briefcase, Building2, CheckCircle2, AlertTriangle } from "lucide-react";
 import { useData } from "@/contexts/DataContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
@@ -17,7 +19,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 
-// Document stage demo data
 const demoDocuments = [
   { id: 1, title: "Writ Petition Copy", type: "Petition", stage: "Filed", date: "2024-01-15", uploadedBy: "District Legal Officer" },
   { id: 2, title: "Counter Affidavit Draft", type: "Counter", stage: "Counter", date: "2024-03-10", uploadedBy: "Section Officer" },
@@ -31,6 +32,46 @@ function DetailField({ label, value, className }: { label: string; value: React.
     <div className={className}>
       <p className="detail-label">{label}</p>
       <div className="detail-value">{value || "-"}</div>
+    </div>
+  );
+}
+
+function PartyCard({ title, parties, icon }: { title: string; parties: Party[]; icon?: React.ReactNode }) {
+  if (!parties || parties.length === 0) return null;
+  return (
+    <div className="bg-muted/30 rounded p-3">
+      <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-2 flex items-center gap-1">
+        {icon}{title} ({parties.length})
+      </p>
+      <div className="space-y-2">
+        {parties.map((p, i) => (
+          <div key={i} className="flex items-start justify-between gap-2 text-xs">
+            <div>
+              <span className="font-medium text-foreground">{i + 1}. {p.name}</span>
+              {p.type && <Badge variant="secondary" className="ml-1.5 text-[9px] px-1 py-0">{p.type}</Badge>}
+            </div>
+            <div className="text-right shrink-0">
+              {p.department && <span className="text-[10px] text-muted-foreground">{p.department}</span>}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function WorkflowStep({ label, status, isActive }: { label: string; status: string; isActive?: boolean }) {
+  const getColor = (s: string) => {
+    if (s === "Completed" || s === "Approved" || s === "Filed" || s === "Complied" || s === "Received") return "bg-emerald-100 text-emerald-800 border-emerald-300";
+    if (s === "Pending" || s === "Draft Ready") return "bg-amber-100 text-amber-800 border-amber-300";
+    if (s === "Not Started" || s === "Not Applicable") return "bg-muted text-muted-foreground border-border";
+    if (s === "In Progress") return "bg-blue-100 text-blue-800 border-blue-300";
+    return "bg-muted text-muted-foreground border-border";
+  };
+  return (
+    <div className={`rounded-md border p-3 text-center ${isActive ? 'ring-2 ring-primary/30' : ''} ${getColor(status)}`}>
+      <p className="text-[10px] font-semibold uppercase tracking-wider mb-1">{label}</p>
+      <p className="text-xs font-bold">{status}</p>
     </div>
   );
 }
@@ -87,7 +128,6 @@ export default function CaseDetails() {
       />
 
       <div className="grid md:grid-cols-3 gap-4">
-        {/* Main content - 2 cols */}
         <div className="md:col-span-2 space-y-4">
           {/* Case Summary */}
           <div className="govt-section-card p-4">
@@ -103,28 +143,23 @@ export default function CaseDetails() {
               <DetailField label="Filing Year" value={caseData.filingYear} />
               <DetailField label="Department" value={caseData.department} />
               <DetailField label="Mandal" value={caseData.mandal} />
+              <DetailField label="Division" value={caseData.division} />
               <DetailField label="Assigned Officer" value={caseData.assignedOfficer} />
               <DetailField label="Collectorate Involvement" value={caseData.collectorateInvolvement} />
+              <DetailField label="Pending At Level" value={<StatusBadge value={caseData.pendingAtLevel} />} />
             </div>
           </div>
 
-          {/* Parties */}
+          {/* Multiple Parties */}
           <div className="govt-section-card p-4">
-            <h3 className="text-xs font-semibold text-foreground mb-3 flex items-center gap-1.5"><Users className="h-3.5 w-3.5" />Parties</h3>
-            <div className="grid md:grid-cols-2 gap-4">
-              <div className="bg-muted/30 rounded p-3">
-                <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-1">Petitioner</p>
-                <p className="text-xs font-medium text-foreground">{caseData.petitioner}</p>
-              </div>
-              <div className="bg-muted/30 rounded p-3">
-                <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-1">Respondent</p>
-                <p className="text-xs font-medium text-foreground">{caseData.respondent}</p>
-              </div>
+            <h3 className="text-xs font-semibold text-foreground mb-3 flex items-center gap-1.5"><Users className="h-3.5 w-3.5" />Parties Involved</h3>
+            <div className="grid md:grid-cols-2 gap-3">
+              <PartyCard title="Petitioners" parties={caseData.petitioners} />
+              <PartyCard title="Respondents" parties={caseData.respondents} icon={<Building2 className="h-3 w-3" />} />
             </div>
-            {caseData.coRespondents.length > 0 && (
-              <div className="mt-3 bg-muted/30 rounded p-3">
-                <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-1">Co-Respondent(s)</p>
-                <ul className="space-y-0.5">{caseData.coRespondents.map((cr, i) => <li key={i} className="text-xs font-medium">{i+1}. {cr}</li>)}</ul>
+            {caseData.coRespondentParties && caseData.coRespondentParties.length > 0 && (
+              <div className="mt-3">
+                <PartyCard title="Co-Respondents" parties={caseData.coRespondentParties} />
               </div>
             )}
             <div className="grid grid-cols-2 gap-3 mt-3">
@@ -140,9 +175,51 @@ export default function CaseDetails() {
             {caseData.remarks && <p className="text-xs text-muted-foreground italic border-t border-border pt-2 mt-2">{caseData.remarks}</p>}
           </div>
 
+          {/* Approval Workflow Pipeline */}
+          <div className="govt-section-card p-4">
+            <h3 className="text-xs font-semibold text-foreground mb-3 flex items-center gap-1.5"><Gavel className="h-3.5 w-3.5" />Legal Progress & Approval Workflow</h3>
+            <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-2 mb-4">
+              <WorkflowStep label="Counter Draft" status={caseData.counterDraftStatus} isActive={caseData.pendingAtLevel === "Counter Filing"} />
+              <WorkflowStep label="GP Approval" status={caseData.gpApprovalStatus} isActive={caseData.pendingAtLevel === "GP Approval"} />
+              <WorkflowStep label="Collector Approval" status={caseData.collectorApprovalStatus} isActive={caseData.pendingAtLevel === "Collector Approval"} />
+              <WorkflowStep label="Counter Filed" status={caseData.counterDraftStatus === "Filed" ? "Filed" : "Pending"} />
+              <WorkflowStep label="Interim Order" status={caseData.interimOrderStatus} />
+              <WorkflowStep label="Final Judgment" status={caseData.finalJudgmentStatus} />
+              <WorkflowStep label="Final Action" status={caseData.finalActionStatus} isActive={caseData.pendingAtLevel === "Final Action"} />
+            </div>
+            {caseData.counterFilingDueDate && (
+              <div className="bg-amber-50 border border-amber-200 rounded p-2 text-xs">
+                <span className="font-semibold text-amber-800">Counter Filing Due:</span>{" "}
+                <span className="text-amber-700">{caseData.counterFilingDueDate}</span>
+              </div>
+            )}
+
+            {/* Approval Actions */}
+            {(permissions?.canApproveGP || permissions?.canApproveCollector) && (
+              <div className="mt-3 flex gap-2">
+                {permissions?.canApproveGP && caseData.gpApprovalStatus === "Pending" && (
+                  <Button size="sm" variant="outline" className="text-xs" onClick={() => {
+                    updateCase(caseData.id, { gpApprovalStatus: "Approved", pendingAtLevel: "Collector Approval", lastUpdated: new Date().toISOString().slice(0, 10) });
+                    toast({ title: "GP Approval granted" });
+                  }}>
+                    <CheckCircle2 className="h-3.5 w-3.5 mr-1.5" />Approve GP
+                  </Button>
+                )}
+                {permissions?.canApproveCollector && caseData.collectorApprovalStatus === "Pending" && (
+                  <Button size="sm" onClick={() => {
+                    updateCase(caseData.id, { collectorApprovalStatus: "Approved", counterDraftStatus: "Filed", pendingAtLevel: "Hearing Update", lastUpdated: new Date().toISOString().slice(0, 10) });
+                    toast({ title: "Collector Approval granted" });
+                  }}>
+                    <CheckCircle2 className="h-3.5 w-3.5 mr-1.5" />Collector Approve
+                  </Button>
+                )}
+              </div>
+            )}
+          </div>
+
           {/* Order & Compliance */}
           <div className="govt-section-card p-4">
-            <h3 className="text-xs font-semibold text-foreground mb-3 flex items-center gap-1.5"><ShieldCheck className="h-3.5 w-3.5" />Order & Compliance</h3>
+            <h3 className="text-xs font-semibold text-foreground mb-3 flex items-center gap-1.5"><ShieldCheck className="h-3.5 w-3.5" />Order & Compliance Tracking</h3>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
               <DetailField label="Order Passed" value={caseData.orderPassed ? <StatusBadge value="Yes" /> : "No"} />
               <DetailField label="Compliance Required" value={caseData.complianceRequired ? <StatusBadge value="Yes" /> : "No"} />
@@ -155,34 +232,25 @@ export default function CaseDetails() {
                 <p className="text-xs font-medium">{caseData.orderSummary}</p>
               </div>
             )}
-            {caseData.complianceCompletedDate && (
-              <div className="mt-2">
-                <DetailField label="Completed Date" value={caseData.complianceCompletedDate} />
+            {caseData.complianceCompletedDate && <div className="mt-2"><DetailField label="Completed Date" value={caseData.complianceCompletedDate} /></div>}
+            
+            {/* Compliance update action */}
+            {permissions?.canUpdateCompliance && caseData.complianceRequired && caseData.complianceStatus !== "Complied" && (
+              <div className="mt-3 flex gap-2">
+                <Button size="sm" variant="outline" className="text-xs" onClick={() => {
+                  updateCase(caseData.id, { complianceStatus: "Partially Complied", lastUpdated: new Date().toISOString().slice(0, 10) });
+                  toast({ title: "Compliance updated to Partially Complied" });
+                }}>
+                  <AlertTriangle className="h-3.5 w-3.5 mr-1.5" />Mark Partial
+                </Button>
+                <Button size="sm" className="text-xs" onClick={() => {
+                  updateCase(caseData.id, { complianceStatus: "Complied", complianceCompletedDate: new Date().toISOString().slice(0, 10), pendingAtLevel: "Closed", lastUpdated: new Date().toISOString().slice(0, 10) });
+                  toast({ title: "Compliance marked as Complied" });
+                }}>
+                  <CheckCircle2 className="h-3.5 w-3.5 mr-1.5" />Mark Complied
+                </Button>
               </div>
             )}
-          </div>
-
-          {/* Counter / Approval Workflow */}
-          <div className="govt-card p-4">
-            <h3 className="text-xs font-semibold text-foreground mb-3 flex items-center gap-1.5"><Gavel className="h-3.5 w-3.5" />Legal Progress & Approvals</h3>
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-              <div className="bg-muted/30 rounded p-3 text-center">
-                <p className="detail-label">Counter Status</p>
-                <StatusBadge value={caseData.status === "Counter Pending" ? "Pending" : "Filed"} />
-              </div>
-              <div className="bg-muted/30 rounded p-3 text-center">
-                <p className="detail-label">GP Approval</p>
-                <StatusBadge value="Not Applicable" />
-              </div>
-              <div className="bg-muted/30 rounded p-3 text-center">
-                <p className="detail-label">Collector Approval</p>
-                <StatusBadge value="Not Applicable" />
-              </div>
-            </div>
-            <div className="grid grid-cols-2 gap-3 mt-3">
-              <DetailField label="Pending At Level" value={caseData.status === "Counter Pending" ? "Pending with Department" : caseData.complianceRequired && caseData.complianceStatus === "Pending" ? "Pending Compliance" : caseData.status === "Closed" ? "Closed" : "Pending Hearing Update"} />
-              <DetailField label="Final Action Status" value={caseData.status === "Closed" ? "Completed" : "In Progress"} />
-            </div>
           </div>
 
           {/* Hearing Timeline */}
@@ -251,15 +319,17 @@ export default function CaseDetails() {
             </Tabs>
           </div>
 
-          {/* Audit / Activity Trail */}
+          {/* Activity Trail */}
           <div className="govt-card">
             <div className="govt-card-header"><h3><Activity className="h-3.5 w-3.5" />Activity Trail</h3></div>
             <div className="p-4 space-y-3">
               {[
                 { action: "Case registered", by: "District Legal Officer", date: caseData.filingDate },
-                { action: "Counter affidavit prepared", by: "Section Officer", date: caseData.lastHearing !== "-" ? caseData.lastHearing : caseData.filingDate },
+                ...(caseData.counterDraftStatus !== "Not Started" ? [{ action: `Counter draft: ${caseData.counterDraftStatus}`, by: "Section Officer", date: caseData.lastHearing !== "-" ? caseData.lastHearing : caseData.filingDate }] : []),
+                ...(caseData.gpApprovalStatus !== "Not Applicable" ? [{ action: `GP Approval: ${caseData.gpApprovalStatus}`, by: "Government Pleader", date: caseData.lastUpdated }] : []),
+                ...(caseData.collectorApprovalStatus !== "Not Applicable" ? [{ action: `Collector Approval: ${caseData.collectorApprovalStatus}`, by: "District Collector", date: caseData.lastUpdated }] : []),
                 ...(caseData.orderPassed ? [{ action: "Order recorded", by: "HC Liaison Officer", date: caseData.lastUpdated }] : []),
-                ...(caseData.complianceRequired ? [{ action: `Compliance status: ${caseData.complianceStatus}`, by: "Revenue Officer", date: caseData.lastUpdated }] : []),
+                ...(caseData.complianceRequired ? [{ action: `Compliance: ${caseData.complianceStatus}`, by: "Revenue Officer", date: caseData.lastUpdated }] : []),
                 { action: "Last updated", by: "System", date: caseData.lastUpdated },
               ].map((entry, i) => (
                 <div key={i} className="flex items-start gap-3">
@@ -274,19 +344,16 @@ export default function CaseDetails() {
           </div>
         </div>
 
-        {/* Sidebar - 1 col */}
+        {/* Sidebar */}
         <div className="space-y-4">
           <div className="govt-section-card p-4 space-y-3">
             <div className="flex items-center justify-between"><span className="detail-label">Status</span><StatusBadge value={caseData.status} /></div>
             <div className="flex items-center justify-between"><span className="detail-label">Priority</span><StatusBadge value={caseData.priority} type="priority" /></div>
-            <div className="border-t border-border pt-2">
-              <DetailField label="Case Type" value={caseData.caseType} />
-            </div>
+            <div className="border-t border-border pt-2"><DetailField label="Case Type" value={caseData.caseType} /></div>
+            <DetailField label="Division" value={caseData.division} />
             <DetailField label="Mandal" value={caseData.mandal} />
             <DetailField label="Department" value={caseData.department} />
-            <div className="border-t border-border pt-2">
-              <DetailField label="Last Hearing" value={caseData.lastHearing} />
-            </div>
+            <div className="border-t border-border pt-2"><DetailField label="Last Hearing" value={caseData.lastHearing} /></div>
             <DetailField label="Next Hearing" value={caseData.nextHearing} />
             <DetailField label="Last Updated" value={caseData.lastUpdated} />
             {caseData.landDisputeFlag && (
@@ -296,16 +363,9 @@ export default function CaseDetails() {
             )}
           </div>
 
-          {/* Pending At Level */}
           <div className="govt-card p-4">
             <h3 className="text-xs font-semibold text-foreground mb-2 flex items-center gap-1.5"><Clock className="h-3.5 w-3.5" />Pending At</h3>
-            <StatusBadge
-              value={
-                caseData.status === "Counter Pending" ? "Pending with Department" :
-                caseData.complianceRequired && caseData.complianceStatus === "Pending" ? "Pending Compliance" :
-                caseData.status === "Closed" ? "Closed" : "Pending Hearing Update"
-              }
-            />
+            <StatusBadge value={caseData.pendingAtLevel} />
           </div>
 
           <div className="govt-card p-4">

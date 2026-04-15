@@ -4,11 +4,12 @@ import { StatsCard } from "@/components/shared/StatsCard";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { useData } from "@/contexts/DataContext";
 import { useAuth } from "@/contexts/AuthContext";
-import { departments } from "@/data/sampleData";
+import { useRoleFilter, getRoleDashboardType } from "@/hooks/useRoleFilter";
+import { departments, divisions } from "@/data/sampleData";
 import {
   Briefcase, Scale, CalendarDays, Bell, AlertTriangle, CheckCircle2,
   Clock, TrendingUp, MapPin, Gavel, Building2, ShieldCheck, Activity, FileText, Users,
-  ArrowRight, Landmark, UserCheck
+  ArrowRight, Landmark, UserCheck, FolderOpen, Archive, Eye, Hourglass
 } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from "recharts";
 import { Link, useNavigate } from "react-router-dom";
@@ -17,10 +18,16 @@ import { Button } from "@/components/ui/button";
 const REF_DATE = new Date();
 
 export default function Dashboard() {
-  const { cases, hearings, alerts, appeals } = useData();
+  const { cases: allCases, hearings: allHearings, alerts, appeals } = useData();
   const { currentUser, permissions, users } = useAuth();
+  const { filteredCases, filteredHearings, scopeLabel } = useRoleFilter();
   const navigate = useNavigate();
   const role = currentUser?.role;
+  const dashType = getRoleDashboardType(role);
+
+  // Use role-filtered data for all calculations
+  const cases = filteredCases;
+  const hearings = filteredHearings;
 
   const activeCases = cases.filter(c => c.status !== "Closed");
   const freshCases = cases.filter(c => c.status === "Fresh");
@@ -36,11 +43,49 @@ export default function Dashboard() {
   const landDisputes = cases.filter(c => c.landDisputeFlag && c.status !== "Closed");
   const last7Days = cases.filter(c => { const d = new Date(c.lastUpdated); return (REF_DATE.getTime() - d.getTime()) / (1000*60*60*24) <= 7; });
   const longPendingCases = cases.filter(c => { if (c.status === "Closed") return false; return (REF_DATE.getTime() - new Date(c.filingDate).getTime()) / (1000*60*60*24) > 365; });
+  const counterPending = cases.filter(c => c.status === "Counter Pending" || c.counterDraftStatus === "Pending" || c.counterDraftStatus === "Draft Ready");
+  const gpApprovalPending = cases.filter(c => c.gpApprovalStatus === "Pending");
+  const collectorApprovalPending = cases.filter(c => c.collectorApprovalStatus === "Pending");
+  const hearingScheduled = cases.filter(c => c.status === "Hearing Scheduled");
 
+  // Urgency: hearings tomorrow
+  const tomorrow = new Date(REF_DATE);
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  const tomorrowStr = tomorrow.toISOString().split("T")[0];
+  const todayStr = REF_DATE.toISOString().split("T")[0];
+  const hearingsToday = hearings.filter(h => h.date === todayStr && h.status === "Scheduled");
+  const hearingsTomorrow = hearings.filter(h => h.date === tomorrowStr && h.status === "Scheduled");
+
+  const greeting = (() => {
+    switch (dashType) {
+      case "superadmin": return "System Administration Dashboard";
+      case "admin": return "Admin Operations Dashboard";
+      case "collector": return "District Collector – Executive Dashboard";
+      case "addlcollector": return `Additional Collector Dashboard – ${scopeLabel}`;
+      case "dro": return `${role} – Operational Dashboard`;
+      case "legal": return "District Legal Officer – Operations";
+      case "section": return `${role} Dashboard – ${scopeLabel}`;
+      case "rdo": return `${role} – Divisional Dashboard`;
+      case "mandal": return `Mandal Dashboard – ${currentUser?.mandal}`;
+      case "department": return `Department Dashboard – ${currentUser?.department}`;
+      case "liaison": return "Court Liaison – Daily Operations";
+      case "casehandler": return "Case Handler Dashboard";
+      case "dataentry": return "Data Entry Dashboard";
+      case "readonly": return "Dashboard (View Only)";
+      default: return "Dashboard";
+    }
+  })();
+
+  const showCharts = ["superadmin", "admin", "collector", "legal", "addlcollector", "dro", "readonly"].includes(dashType);
+  const showDeptTiles = ["superadmin", "admin", "collector", "legal", "addlcollector", "dro", "readonly"].includes(dashType);
+  const showCollectorCards = dashType === "collector";
+  const showApprovalCards = ["collector", "legal", "admin", "superadmin", "addlcollector", "dro"].includes(dashType);
+
+  // Chart data
   const statusData = [
     { name: "Fresh", value: freshCases.length, color: "hsl(142,50%,40%)" },
     { name: "Ongoing", value: ongoingCases.length, color: "hsl(207,60%,45%)" },
-    { name: "Hearing Scheduled", value: cases.filter(c => c.status === "Hearing Scheduled").length, color: "hsl(35,80%,50%)" },
+    { name: "Hearing Scheduled", value: hearingScheduled.length, color: "hsl(35,80%,50%)" },
     { name: "Counter Pending", value: cases.filter(c => c.status === "Counter Pending").length, color: "hsl(25,85%,50%)" },
     { name: "Under Review", value: cases.filter(c => c.status === "Under Review").length, color: "hsl(270,40%,50%)" },
     { name: "Appealed", value: cases.filter(c => c.status === "Appealed").length, color: "hsl(320,40%,50%)" },
@@ -55,35 +100,20 @@ export default function Dashboard() {
   const priorityData = (() => { const m: Record<string, number> = {}; cases.forEach(c => { m[c.priority] = (m[c.priority] || 0) + 1; }); return Object.entries(m).map(([priority, cases]) => ({ priority, cases })); })();
   const deptCompliance = (() => { const m: Record<string, { pending: number; partial: number; complied: number }> = {}; cases.filter(c => c.complianceRequired).forEach(c => { if (!m[c.department]) m[c.department] = { pending: 0, partial: 0, complied: 0 }; if (c.complianceStatus === "Pending") m[c.department].pending++; else if (c.complianceStatus === "Partially Complied") m[c.department].partial++; else if (c.complianceStatus === "Complied") m[c.department].complied++; }); return Object.entries(m).map(([dept, v]) => ({ dept, ...v })); })();
 
-  const greeting = (() => {
-    switch (role) {
-      case "Super Admin": return "System Administration Dashboard";
-      case "Admin": return "Admin Operations Dashboard";
-      case "District Collector": return "District Review Dashboard";
-      case "District Legal Officer": return "Legal Operations Dashboard";
-      case "High Court Representative Officer": return "Court Liaison Dashboard";
-      case "Department Nodal Officer": return `Department Dashboard – ${currentUser?.department}`;
-      case "Mandal-Level User": return `Mandal Dashboard – ${currentUser?.mandal}`;
-      case "Data Entry Operator": return "Data Entry Dashboard";
-      case "Read-Only Viewer": return "Dashboard (View Only)";
-      default: return "Dashboard";
-    }
-  })();
-
-  const showFullDashboard = ["Super Admin", "Admin", "District Collector", "District Legal Officer"].includes(role || "");
-  const isCollector = role === "District Collector";
-  const isLiaison = role === "High Court Representative Officer";
-  const isDeptNodal = role === "Department Nodal Officer";
-  const isMandalUser = role === "Mandal-Level User";
-  const isDataEntry = role === "Data Entry Operator";
-  const isReadOnly = role === "Read-Only Viewer";
-
-  const userCases = isDeptNodal ? cases.filter(c => c.department === currentUser?.department) : isMandalUser ? cases.filter(c => c.mandal === currentUser?.mandal) : cases;
-  const userActiveCases = userCases.filter(c => c.status !== "Closed");
-
-  // Dept counts for quick tiles
   const deptCaseCounts: Record<string, number> = {};
   departments.forEach(d => { deptCaseCounts[d] = cases.filter(c => c.department === d).length; });
+
+  const divCounts: Record<string, number> = {};
+  Object.entries(divisions).forEach(([div, mandals]) => {
+    divCounts[div] = cases.filter(c => mandals.includes(c.mandal)).length;
+  });
+
+  // Pending-at-level summary
+  const pendingAtSummary = (() => {
+    const m: Record<string, number> = {};
+    activeCases.forEach(c => { if (c.pendingAtLevel) m[c.pendingAtLevel] = (m[c.pendingAtLevel] || 0) + 1; });
+    return Object.entries(m).map(([level, count]) => ({ level, count })).sort((a, b) => b.count - a.count);
+  })();
 
   return (
     <AppLayout>
@@ -91,27 +121,26 @@ export default function Dashboard() {
         title={greeting}
         breadcrumbs={[{ label: "Home", href: "/" }, { label: "Dashboard" }]}
         actions={
-          isCollector ? (
-            <div className="text-right">
-              <p className="text-[10px] text-muted-foreground">District Collector</p>
-              <p className="text-xs font-semibold text-foreground">{currentUser?.name}</p>
-            </div>
-          ) : undefined
+          <div className="text-right">
+            <p className="text-[10px] text-muted-foreground">{role}</p>
+            <p className="text-xs font-semibold text-foreground">{currentUser?.name}</p>
+            {scopeLabel !== "District-wide" && <p className="text-[10px] text-primary font-medium">{scopeLabel}</p>}
+          </div>
         }
       />
 
-      {/* Super Admin extras */}
-      {role === "Super Admin" && (
+      {/* Super Admin: system stats */}
+      {dashType === "superadmin" && (
         <div className="grid grid-cols-2 md:grid-cols-4 gap-2.5 mb-4">
           <StatsCard title="Total Users" value={users.length} icon={Users} subtitle="System accounts" href="/users" accent="info" />
           <StatsCard title="Active Users" value={users.filter(u => u.status === "Active").length} icon={UserCheck} subtitle="Currently active" href="/users" accent="success" />
-          <StatsCard title="Total Cases" value={cases.length} icon={Briefcase} subtitle="All registered" href="/cases" />
-          <StatsCard title="Total Hearings" value={hearings.length} icon={CalendarDays} subtitle="All records" href="/hearings" />
+          <StatsCard title="Total Cases" value={allCases.length} icon={Briefcase} subtitle="All registered" href="/cases" />
+          <StatsCard title="Total Hearings" value={allHearings.length} icon={CalendarDays} subtitle="All records" href="/hearings" />
         </div>
       )}
 
-      {/* Data Entry quick actions */}
-      {isDataEntry && (
+      {/* Data Entry: quick actions */}
+      {dashType === "dataentry" && (
         <div className="govt-card p-4 mb-4">
           <h3 className="text-xs font-semibold text-foreground mb-3">Quick Actions</h3>
           <div className="flex gap-3">
@@ -122,53 +151,90 @@ export default function Dashboard() {
         </div>
       )}
 
-      {/* Liaison quick actions */}
-      {isLiaison && (
+      {/* Liaison: today's priority */}
+      {dashType === "liaison" && (
         <div className="govt-card p-4 mb-4">
           <h3 className="text-xs font-semibold text-foreground mb-3">Today's Priority</h3>
-          <div className="flex gap-3 mb-3">
-            <StatsCard title="Hearings Today" value={upcomingHearings.length} icon={Gavel} className="flex-1" href="/hearings" accent="warning" />
-            <StatsCard title="Compliance Pending" value={compliancePending.length} icon={Clock} className="flex-1" href="/compliance" accent="urgent" />
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-2.5 mb-3">
+            <StatsCard title="Hearings Today" value={hearingsToday.length} icon={Gavel} href="/hearings" accent="urgent" />
+            <StatsCard title="Hearings Tomorrow" value={hearingsTomorrow.length} icon={CalendarDays} href="/hearings" accent="warning" />
+            <StatsCard title="Compliance Pending" value={compliancePending.length} icon={Clock} href="/compliance" accent="urgent" />
+            <StatsCard title="Total Scheduled" value={upcomingHearings.length} icon={CalendarDays} href="/hearings" accent="info" />
           </div>
-          <Link to="/court-liaison"><Button size="sm"><Gavel className="h-3.5 w-3.5 mr-1.5" />Open Daily Update Desk</Button></Link>
+          <div className="flex gap-2">
+            <Link to="/court-liaison"><Button size="sm"><Gavel className="h-3.5 w-3.5 mr-1.5" />Open Daily Update Desk</Button></Link>
+            <Link to="/hearings"><Button variant="outline" size="sm"><CalendarDays className="h-3.5 w-3.5 mr-1.5" />All Hearings</Button></Link>
+          </div>
         </div>
       )}
 
-      {/* Core KPI cards - clickable */}
+      {/* Core KPI Row 1 */}
       <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-2.5 mb-4">
-        <StatsCard title="Total Cases" value={isDeptNodal || isMandalUser ? userCases.length : cases.length} icon={Briefcase} href="/cases" />
-        <StatsCard title="Fresh" value={isDeptNodal || isMandalUser ? userCases.filter(c => c.status === "Fresh").length : freshCases.length} icon={TrendingUp} href="/cases?status=Fresh" accent="success" />
-        <StatsCard title="Ongoing" value={isDeptNodal || isMandalUser ? userActiveCases.length : ongoingCases.length} icon={Clock} href="/cases?status=Ongoing" accent="info" />
-        <StatsCard title="Closed" value={isDeptNodal || isMandalUser ? userCases.filter(c => c.status === "Closed").length : closedCases.length} icon={CheckCircle2} href="/cases?status=Closed" />
+        <StatsCard title="Total Cases" value={cases.length} icon={Briefcase} href="/cases" />
+        <StatsCard title="Fresh" value={freshCases.length} icon={TrendingUp} href="/cases?status=Fresh" accent="success" />
+        <StatsCard title="Ongoing" value={ongoingCases.length} icon={Clock} href="/cases?status=Ongoing" accent="info" />
+        <StatsCard title="Closed" value={closedCases.length} icon={CheckCircle2} href="/cases/closed" />
         <StatsCard title="Hearings Due" value={upcomingHearings.length} icon={CalendarDays} href="/hearings" accent="warning" />
         <StatsCard title="Appeals" value={appeals.length} icon={Scale} href="/appeals" accent="info" />
         <StatsCard title="Alerts" value={pendingAlerts.length} icon={AlertTriangle} href="/alerts" accent="urgent" />
       </div>
 
-      {/* Compliance + Collectorate KPI row */}
-      {(showFullDashboard || isReadOnly) && (
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2.5 mb-4">
-          <StatsCard title="Orders Complied" value={complied.length} icon={CheckCircle2} href="/compliance" accent="success" />
+      {/* Row 2: Urgency + Compliance */}
+      {showApprovalCards && (
+        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-2.5 mb-4">
+          <StatsCard title="Hearings Today" value={hearingsToday.length} icon={Gavel} href="/hearings" accent="urgent" />
+          <StatsCard title="Hearings Tomorrow" value={hearingsTomorrow.length} icon={CalendarDays} href="/hearings" accent="warning" />
+          <StatsCard title="Counter Pending" value={counterPending.length} icon={FileText} href="/cases?status=Counter+Pending" accent="warning" />
+          <StatsCard title="GP Approval" value={gpApprovalPending.length} icon={AlertTriangle} href="/cases?gpApproval=Pending" accent="urgent" />
+          <StatsCard title="Collector Approval" value={collectorApprovalPending.length} icon={CheckCircle2} href="/cases?collectorApproval=Pending" accent="warning" />
           <StatsCard title="Compliance Pending" value={compliancePending.length} icon={Clock} href="/compliance" accent="urgent" />
-          <StatsCard title="Partially Complied" value={compliancePartial.length} icon={AlertTriangle} href="/compliance" accent="warning" />
-          <StatsCard title="Collectorate Respondent" value={collectRespondent.length} icon={Building2} href="/cases?involvement=Collectorate+as+Respondent" />
-          <StatsCard title="Land Disputes" value={landDisputes.length} icon={MapPin} href="/cases?land=true" accent="urgent" />
-          <StatsCard title="Long-Pending" value={longPendingCases.length} icon={FileText} subtitle=">1 year" href="/cases" accent="warning" />
+          <StatsCard title="Orders Complied" value={complied.length} icon={ShieldCheck} href="/compliance" accent="success" />
+          <StatsCard title="Long-Pending" value={longPendingCases.length} icon={Hourglass} subtitle=">1 year" href="/cases" accent="warning" />
         </div>
       )}
 
-      {/* Collector-specific blocks */}
-      {isCollector && (
+      {/* Collector-specific: Collectorate involvement + land */}
+      {showCollectorCards && (
         <div className="grid grid-cols-2 md:grid-cols-4 gap-2.5 mb-4">
           <StatsCard title="Collectorate as Respondent" value={collectRespondent.length} icon={Landmark} href="/cases?involvement=Collectorate+as+Respondent" accent="urgent" />
-          <StatsCard title="Collectorate as Co-Respondent" value={collectCoRespondent.length} icon={Building2} href="/cases?involvement=Collectorate+as+Co-Respondent" accent="warning" />
+          <StatsCard title="Collectorate Co-Respondent" value={collectCoRespondent.length} icon={Building2} href="/cases?involvement=Collectorate+as+Co-Respondent" accent="warning" />
           <StatsCard title="Last 7 Days Updates" value={last7Days.length} icon={Activity} href="/cases" accent="info" />
-          <StatsCard title="High Priority Land" value={cases.filter(c => c.landDisputeFlag && c.priority === "High").length} icon={MapPin} href="/cases?land=true" accent="urgent" />
+          <StatsCard title="Land Disputes" value={landDisputes.length} icon={MapPin} href="/cases?land=true" accent="urgent" />
+        </div>
+      )}
+
+      {/* Pending-At-Level Summary */}
+      {showApprovalCards && pendingAtSummary.length > 0 && (
+        <div className="govt-card mb-4">
+          <div className="govt-card-header"><h3><Clock className="h-3.5 w-3.5" />Pending at Level Summary</h3></div>
+          <div className="p-3 grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-2">
+            {pendingAtSummary.map(p => (
+              <div key={p.level} className="text-center p-2 bg-muted/50 rounded">
+                <p className="text-lg font-bold text-foreground">{p.count}</p>
+                <p className="text-[10px] text-muted-foreground">{p.level}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Division-wise counts (for Collector, Admin, Legal, DRO) */}
+      {["collector", "admin", "superadmin", "legal", "dro", "addlcollector", "readonly"].includes(dashType) && (
+        <div className="govt-card mb-4">
+          <div className="govt-card-header"><h3><MapPin className="h-3.5 w-3.5" />Division-wise Cases</h3></div>
+          <div className="p-3 grid grid-cols-2 gap-2">
+            {Object.entries(divCounts).map(([div, count]) => (
+              <Link key={div} to={`/cases?division=${encodeURIComponent(div)}`} className="dept-tile">
+                <span className="count">{count}</span>
+                <p>{div}</p>
+              </Link>
+            ))}
+          </div>
         </div>
       )}
 
       {/* Department Quick Access Tiles */}
-      {(showFullDashboard || isReadOnly) && (
+      {showDeptTiles && (
         <div className="govt-card mb-4">
           <div className="govt-card-header">
             <h3><Building2 className="h-3.5 w-3.5" />Department-wise Cases</h3>
@@ -186,7 +252,7 @@ export default function Dashboard() {
       )}
 
       {/* Charts */}
-      {(showFullDashboard || isReadOnly) && (
+      {showCharts && (
         <>
           <div className="grid md:grid-cols-2 gap-4 mb-4">
             <div className="govt-card p-4">
@@ -240,7 +306,7 @@ export default function Dashboard() {
       )}
 
       {/* Compliance + Collectorate summary panels */}
-      {(showFullDashboard || isReadOnly) && (
+      {showCharts && (
         <div className="grid md:grid-cols-2 gap-4 mb-4">
           <div className="govt-card">
             <div className="govt-card-header"><h3><ShieldCheck className="h-3.5 w-3.5" />Compliance Summary</h3></div>
@@ -278,7 +344,7 @@ export default function Dashboard() {
       )}
 
       {/* Dept Compliance Table */}
-      {(showFullDashboard || isReadOnly) && deptCompliance.length > 0 && (
+      {showCharts && deptCompliance.length > 0 && (
         <div className="govt-card mb-4">
           <div className="govt-card-header"><h3>Pending Compliance by Department</h3></div>
           <table className="w-full govt-table">
@@ -289,56 +355,60 @@ export default function Dashboard() {
       )}
 
       {/* Upcoming Hearings + Land Disputes */}
-      <div className="grid md:grid-cols-2 gap-4 mb-4">
-        <div className="govt-card">
-          <div className="govt-card-header">
-            <h3><CalendarDays className="h-3.5 w-3.5" />Upcoming Hearings ({upcomingHearings.length})</h3>
-            <Link to="/hearings" className="text-[10px] text-primary hover:underline flex items-center gap-0.5">View All <ArrowRight className="h-3 w-3" /></Link>
+      {dashType !== "dataentry" && (
+        <div className="grid md:grid-cols-2 gap-4 mb-4">
+          <div className="govt-card">
+            <div className="govt-card-header">
+              <h3><CalendarDays className="h-3.5 w-3.5" />Upcoming Hearings ({upcomingHearings.length})</h3>
+              <Link to="/hearings" className="text-[10px] text-primary hover:underline flex items-center gap-0.5">View All <ArrowRight className="h-3 w-3" /></Link>
+            </div>
+            <table className="w-full govt-table">
+              <thead><tr><th>Case</th><th>Court</th><th>Date</th><th>Officer</th></tr></thead>
+              <tbody>
+                {upcomingHearings.slice(0, 8).map(h => (<tr key={h.id} className="cursor-pointer" onClick={() => navigate(`/cases/${encodeURIComponent(h.caseId)}`)}><td className="font-medium text-foreground text-xs max-w-[150px] truncate">{h.caseTitle}</td><td className="text-[10px]">{h.court}</td><td className="text-xs whitespace-nowrap">{h.date}</td><td className="text-[10px]">{h.officer}</td></tr>))}
+                {upcomingHearings.length === 0 && <tr><td colSpan={4} className="text-center py-4 text-muted-foreground text-xs">No upcoming hearings</td></tr>}
+              </tbody>
+            </table>
           </div>
-          <table className="w-full govt-table">
-            <thead><tr><th>Case</th><th>Court</th><th>Date</th><th>Officer</th></tr></thead>
-            <tbody>
-              {upcomingHearings.slice(0, 8).map(h => (<tr key={h.id} className="cursor-pointer" onClick={() => navigate(`/cases/${encodeURIComponent(h.caseId)}`)}><td className="font-medium text-foreground text-xs max-w-[150px] truncate">{h.caseTitle}</td><td className="text-[10px]">{h.court}</td><td className="text-xs whitespace-nowrap">{h.date}</td><td className="text-[10px]">{h.officer}</td></tr>))}
-              {upcomingHearings.length === 0 && <tr><td colSpan={4} className="text-center py-4 text-muted-foreground text-xs">No upcoming hearings</td></tr>}
-            </tbody>
-          </table>
-        </div>
-        <div className="govt-card">
-          <div className="govt-card-header">
-            <h3><MapPin className="h-3.5 w-3.5" />Active Land Disputes ({landDisputes.length})</h3>
-            <Link to="/cases?land=true" className="text-[10px] text-primary hover:underline flex items-center gap-0.5">View All <ArrowRight className="h-3 w-3" /></Link>
+          <div className="govt-card">
+            <div className="govt-card-header">
+              <h3><MapPin className="h-3.5 w-3.5" />Active Land Disputes ({landDisputes.length})</h3>
+              <Link to="/cases?land=true" className="text-[10px] text-primary hover:underline flex items-center gap-0.5">View All <ArrowRight className="h-3 w-3" /></Link>
+            </div>
+            <table className="w-full govt-table">
+              <thead><tr><th>Case</th><th>Mandal</th><th>Priority</th><th>Status</th></tr></thead>
+              <tbody>
+                {landDisputes.slice(0, 8).map(c => (<tr key={c.id} className="cursor-pointer" onClick={() => navigate(`/cases/${encodeURIComponent(c.id)}`)}><td className="font-medium text-foreground text-xs max-w-[150px] truncate">{c.title}</td><td className="text-xs">{c.mandal}</td><td><StatusBadge value={c.priority} type="priority" /></td><td><StatusBadge value={c.status} /></td></tr>))}
+                {landDisputes.length === 0 && <tr><td colSpan={4} className="text-center py-4 text-muted-foreground text-xs">None</td></tr>}
+              </tbody>
+            </table>
           </div>
-          <table className="w-full govt-table">
-            <thead><tr><th>Case</th><th>Mandal</th><th>Priority</th><th>Status</th></tr></thead>
-            <tbody>
-              {landDisputes.slice(0, 8).map(c => (<tr key={c.id} className="cursor-pointer" onClick={() => navigate(`/cases/${encodeURIComponent(c.id)}`)}><td className="font-medium text-foreground text-xs max-w-[150px] truncate">{c.title}</td><td className="text-xs">{c.mandal}</td><td><StatusBadge value={c.priority} type="priority" /></td><td><StatusBadge value={c.status} /></td></tr>))}
-              {landDisputes.length === 0 && <tr><td colSpan={4} className="text-center py-4 text-muted-foreground text-xs">None</td></tr>}
-            </tbody>
-          </table>
         </div>
-      </div>
+      )}
 
-      {/* Last 7 Days + Alerts */}
-      <div className="grid md:grid-cols-2 gap-4 mb-4">
-        <div className="govt-card">
-          <div className="govt-card-header"><h3><Activity className="h-3.5 w-3.5" />Updated in Last 7 Days ({last7Days.length})</h3></div>
-          <table className="w-full govt-table">
-            <thead><tr><th>Case</th><th>Department</th><th>Updated</th><th>Status</th></tr></thead>
-            <tbody>
-              {last7Days.slice(0, 8).map(c => (<tr key={c.id} className="cursor-pointer" onClick={() => navigate(`/cases/${encodeURIComponent(c.id)}`)}><td className="font-medium text-foreground text-xs max-w-[150px] truncate">{c.title}</td><td className="text-[10px]">{c.department}</td><td className="text-xs">{c.lastUpdated}</td><td><StatusBadge value={c.status} /></td></tr>))}
-            </tbody>
-          </table>
+      {/* Recent Updates + Alerts */}
+      {dashType !== "dataentry" && (
+        <div className="grid md:grid-cols-2 gap-4 mb-4">
+          <div className="govt-card">
+            <div className="govt-card-header"><h3><Activity className="h-3.5 w-3.5" />Updated in Last 7 Days ({last7Days.length})</h3></div>
+            <table className="w-full govt-table">
+              <thead><tr><th>Case</th><th>Department</th><th>Updated</th><th>Status</th></tr></thead>
+              <tbody>
+                {last7Days.slice(0, 8).map(c => (<tr key={c.id} className="cursor-pointer" onClick={() => navigate(`/cases/${encodeURIComponent(c.id)}`)}><td className="font-medium text-foreground text-xs max-w-[150px] truncate">{c.title}</td><td className="text-[10px]">{c.department}</td><td className="text-xs">{c.lastUpdated}</td><td><StatusBadge value={c.status} /></td></tr>))}
+              </tbody>
+            </table>
+          </div>
+          <div className="govt-card">
+            <div className="govt-card-header"><h3><Bell className="h-3.5 w-3.5" />Recent Alerts ({alerts.length})</h3></div>
+            <table className="w-full govt-table">
+              <thead><tr><th>Type</th><th>Alert</th><th>Officer</th><th>Priority</th></tr></thead>
+              <tbody>
+                {alerts.slice(0, 8).map(a => (<tr key={a.id}><td className="text-xs font-medium whitespace-nowrap">{a.type}</td><td className="max-w-[250px] truncate text-xs">{a.message}</td><td className="text-[10px] whitespace-nowrap">{a.officer}</td><td><StatusBadge value={a.priority} type="priority" /></td></tr>))}
+              </tbody>
+            </table>
+          </div>
         </div>
-        <div className="govt-card">
-          <div className="govt-card-header"><h3><Bell className="h-3.5 w-3.5" />Recent Alerts ({alerts.length})</h3></div>
-          <table className="w-full govt-table">
-            <thead><tr><th>Type</th><th>Alert</th><th>Officer</th><th>Priority</th></tr></thead>
-            <tbody>
-              {alerts.slice(0, 8).map(a => (<tr key={a.id}><td className="text-xs font-medium whitespace-nowrap">{a.type}</td><td className="max-w-[250px] truncate text-xs">{a.message}</td><td className="text-[10px] whitespace-nowrap">{a.officer}</td><td><StatusBadge value={a.priority} type="priority" /></td></tr>))}
-            </tbody>
-          </table>
-        </div>
-      </div>
+      )}
     </AppLayout>
   );
 }

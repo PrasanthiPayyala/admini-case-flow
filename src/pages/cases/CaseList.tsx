@@ -1,7 +1,7 @@
 import { AppLayout } from "@/components/layout/AppLayout";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { StatusBadge } from "@/components/shared/StatusBadge";
-import { caseTypes, mandals, departments, courtNames, priorities, collectorateInvolvementTypes, HC_STATUS_URL, divisions } from "@/data/sampleData";
+import { caseTypes, mandals, departments, courtNames, priorities, collectorateInvolvementTypes, HC_STATUS_URL, divisions, pendingAtLevels } from "@/data/sampleData";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -10,8 +10,8 @@ import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/h
 import { Plus, Download, Search, Eye, Edit, MoreHorizontal, Upload, ExternalLink } from "lucide-react";
 import { Link, useSearchParams } from "react-router-dom";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { useData } from "@/contexts/DataContext";
 import { useAuth } from "@/contexts/AuthContext";
+import { useRoleFilter } from "@/hooks/useRoleFilter";
 import { useState, useEffect, useMemo } from "react";
 import type { Party } from "@/data/sampleData";
 
@@ -69,7 +69,7 @@ function PartyCell({ parties }: { parties: Party[] }) {
 }
 
 export default function CaseList() {
-  const { cases } = useData();
+  const { filteredCases: cases, scopeLabel } = useRoleFilter();
   const { permissions } = useAuth();
   const [searchParams] = useSearchParams();
 
@@ -84,6 +84,7 @@ export default function CaseList() {
   const [complianceF, setComplianceF] = useState("all");
   const [landF, setLandF] = useState("all");
   const [divisionF, setDivisionF] = useState("all");
+  const [pendingAtF, setPendingAtF] = useState("all");
   const [page, setPage] = useState(1);
 
   useEffect(() => {
@@ -92,11 +93,18 @@ export default function CaseList() {
     const land = searchParams.get("land");
     const dept = searchParams.get("department");
     const div = searchParams.get("division");
+    const gp = searchParams.get("gpApproval");
+    const ca = searchParams.get("collectorApproval");
+    const comp = searchParams.get("compliance");
+    const lp = searchParams.get("longPending");
     if (s && STATUSES.includes(s)) setStatusF(s);
     if (inv) setCollectF(inv);
     if (land === "true") setLandF("yes");
     if (dept) setDeptF(dept);
     if (div && DIVISION_NAMES.includes(div)) setDivisionF(div);
+    if (gp === "Pending") setPendingAtF("GP Approval");
+    if (ca === "Pending") setPendingAtF("Collector Approval");
+    if (comp === "pending") setComplianceF("pending");
   }, [searchParams]);
 
   const filtered = useMemo(() => cases.filter(c => {
@@ -112,6 +120,7 @@ export default function CaseList() {
     if (priorityF !== "all" && c.priority !== priorityF) return false;
     if (collectF !== "all" && c.collectorateInvolvement !== collectF) return false;
     if (divisionF !== "all" && c.division !== divisionF) return false;
+    if (pendingAtF !== "all" && c.pendingAtLevel !== pendingAtF) return false;
     if (landF === "yes" && !c.landDisputeFlag) return false;
     if (complianceF !== "all") {
       if (complianceF === "pending" && c.complianceStatus !== "Pending") return false;
@@ -120,7 +129,7 @@ export default function CaseList() {
       if (complianceF === "na" && c.complianceStatus !== "Not Applicable") return false;
     }
     return true;
-  }), [cases, search, statusF, typeF, courtF, mandalF, deptF, priorityF, collectF, complianceF, landF, divisionF]);
+  }), [cases, search, statusF, typeF, courtF, mandalF, deptF, priorityF, collectF, complianceF, landF, divisionF, pendingAtF]);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const paged = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
@@ -128,10 +137,10 @@ export default function CaseList() {
   const clearFilters = () => {
     setSearch(""); setStatusF("all"); setTypeF("all"); setCourtF("all"); setMandalF("all");
     setDeptF("all"); setPriorityF("all"); setCollectF("all"); setComplianceF("all"); setLandF("all");
-    setDivisionF("all"); setPage(1);
+    setDivisionF("all"); setPendingAtF("all"); setPage(1);
   };
 
-  const hasFilters = statusF !== "all" || typeF !== "all" || courtF !== "all" || mandalF !== "all" || deptF !== "all" || priorityF !== "all" || collectF !== "all" || complianceF !== "all" || landF !== "all" || divisionF !== "all" || search;
+  const hasFilters = statusF !== "all" || typeF !== "all" || courtF !== "all" || mandalF !== "all" || deptF !== "all" || priorityF !== "all" || collectF !== "all" || complianceF !== "all" || landF !== "all" || divisionF !== "all" || pendingAtF !== "all" || search;
 
   return (
     <AppLayout>
@@ -140,6 +149,7 @@ export default function CaseList() {
         breadcrumbs={[{ label: "Home", href: "/" }, { label: "Cases" }]}
         actions={
           <>
+            {scopeLabel !== "District-wide" && <Badge variant="secondary" className="text-[10px]">{scopeLabel}</Badge>}
             <Button variant="outline" size="sm"><Download className="h-3.5 w-3.5 mr-1.5" />Export</Button>
             {permissions?.canBulkUpload && <Link to="/cases/bulk-upload"><Button variant="outline" size="sm"><Upload className="h-3.5 w-3.5 mr-1.5" />Bulk Upload</Button></Link>}
             {permissions?.canCreateCase && <Link to="/cases/new"><Button size="sm"><Plus className="h-3.5 w-3.5 mr-1.5" />Add Case</Button></Link>}
@@ -175,6 +185,9 @@ export default function CaseList() {
           <Select value={priorityF} onValueChange={v => { setPriorityF(v); setPage(1); }}><SelectTrigger className="w-[110px] h-8 text-xs"><SelectValue placeholder="Priority" /></SelectTrigger>
             <SelectContent><SelectItem value="all">All</SelectItem>{priorities.map(p => <SelectItem key={p} value={p}>{p}</SelectItem>)}</SelectContent>
           </Select>
+          <Select value={pendingAtF} onValueChange={v => { setPendingAtF(v); setPage(1); }}><SelectTrigger className="w-[130px] h-8 text-xs"><SelectValue placeholder="Pending At" /></SelectTrigger>
+            <SelectContent><SelectItem value="all">All Levels</SelectItem>{pendingAtLevels.map(p => <SelectItem key={p} value={p}>{p}</SelectItem>)}</SelectContent>
+          </Select>
           <Select value={collectF} onValueChange={v => { setCollectF(v); setPage(1); }}><SelectTrigger className="w-[140px] h-8 text-xs"><SelectValue placeholder="Involvement" /></SelectTrigger>
             <SelectContent><SelectItem value="all">All</SelectItem>{collectorateInvolvementTypes.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent>
           </Select>
@@ -206,6 +219,7 @@ export default function CaseList() {
                 <th>Counter</th>
                 <th>Pending At</th>
                 <th>Compliance</th>
+                <th>Officer</th>
                 <th className="w-12">Actions</th>
               </tr>
             </thead>
@@ -232,6 +246,7 @@ export default function CaseList() {
                     <td className={`whitespace-nowrap text-xs ${counterDays.className}`}>{counterDays.label}</td>
                     <td><StatusBadge value={c.pendingAtLevel} size="sm" /></td>
                     <td><StatusBadge value={c.complianceStatus} size="sm" /></td>
+                    <td className="text-[10px] max-w-[80px] truncate">{c.assignedOfficer}</td>
                     <td>
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
@@ -249,7 +264,7 @@ export default function CaseList() {
                   </tr>
                 );
               })}
-              {paged.length === 0 && <tr><td colSpan={16} className="text-center py-6 text-muted-foreground text-xs">No cases found matching your filters</td></tr>}
+              {paged.length === 0 && <tr><td colSpan={17} className="text-center py-6 text-muted-foreground text-xs">No cases found matching your filters</td></tr>}
             </tbody>
           </table>
         </div>
