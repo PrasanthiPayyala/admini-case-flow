@@ -78,16 +78,29 @@ function WorkflowStep({ label, status, isActive }: { label: string; status: stri
 
 export default function CaseDetails() {
   const { id } = useParams();
-  const { cases, hearings, addHearing, updateCase, generateHearingId } = useData();
-  const { permissions } = useAuth();
+  const { cases, hearings, addHearing, updateCase, generateHearingId, addDirection, updateDirection, addActionTaken, setCounterStatus, markDisposed, closeFile } = useData();
+  const { permissions, currentUser } = useAuth();
   const { toast } = useToast();
   const caseData = cases.find(c => c.id === decodeURIComponent(id || ""));
   const [hearingDialog, setHearingDialog] = useState(false);
   const [hForm, setHForm] = useState({ date: "", time: "", type: "Regular Hearing", outcome: "", remarks: "", orderPassed: false, orderSummary: "", complianceRequired: false, complianceStatus: "Not Applicable", complianceDueDate: "" });
+  const [dirDialog, setDirDialog] = useState(false);
+  const [dirForm, setDirForm] = useState({ text: "", concernedOfficer: "", concernedDepartment: "", dueDate: "", priority: "Medium" as "High" | "Medium" | "Low" });
+  const [actionDialog, setActionDialog] = useState<{ open: boolean; linkedDirectionId?: string }>({ open: false });
+  const [actionForm, setActionForm] = useState({ summary: "", docName: "" });
+  const [disposeDialog, setDisposeDialog] = useState(false);
+  const [disposeForm, setDisposeForm] = useState({ disposalDate: new Date().toISOString().slice(0, 10), disposalSummary: "" });
 
   if (!caseData) return <AppLayout><div className="text-center py-20 text-muted-foreground">Case not found</div></AppLayout>;
 
   const caseHearings = hearings.filter(h => h.caseId === caseData.id);
+  const directions = caseData.directions || [];
+  const actionsTaken = caseData.actionsTaken || [];
+  const auditTrail = caseData.auditTrail || [];
+  const actorName = currentUser?.name || "Unknown";
+  const actorRole = currentUser?.role || "";
+  const pendingDirections = directions.filter(d => d.status !== "Completed");
+  const canCloseFile = caseData.disposed === "Yes" && pendingDirections.length === 0 && !caseData.closed;
 
   const handleAddHearing = () => {
     const hid = generateHearingId();
