@@ -7,6 +7,40 @@ import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 
+const DEMO_GROUPS: { section: string; accounts: { email: string; role: string }[] }[] = [
+  { section: "LEADERSHIP", accounts: [
+    { email: "collector@lcms.local", role: "District Collector" },
+    { email: "addlcollector.rev@lcms.local", role: "Addl Collector (Rev)" },
+    { email: "addlcollector.lb@lcms.local", role: "Addl Collector (LB)" },
+    { email: "ao@lcms.local", role: "Administrative Officer" },
+  ]},
+  { section: "LEGAL CELL", accounts: [
+    { email: "legalofficer@lcms.local", role: "District Legal Officer" },
+    { email: "liaisonofficer@lcms.local", role: "HC Representative" },
+    { email: "sectionc@lcms.local", role: "Section C Officer" },
+    { email: "sectiond@lcms.local", role: "Section D Officer" },
+    { email: "sectione@lcms.local", role: "Section E Officer" },
+    { email: "sectiong@lcms.local", role: "Section G Officer" },
+  ]},
+  { section: "DIVISIONS / RDO", accounts: [
+    { email: "rdo.bhongir@lcms.local", role: "RDO Bhongir" },
+    { email: "rdo.choutuppal@lcms.local", role: "RDO Choutuppal" },
+  ]},
+  { section: "DEPARTMENTS & MANDALS", accounts: [
+    { email: "dept.revenue@lcms.local", role: "Dept Nodal Officer" },
+    { email: "tahsildar.bhongir@lcms.local", role: "Tahsildar Bhongir" },
+    { email: "tahsildar.choutuppal@lcms.local", role: "Tahsildar Choutuppal" },
+    { email: "tahsildar.alair@lcms.local", role: "Tahsildar Alair" },
+    { email: "tahsildar.yadagirigutta@lcms.local", role: "Tahsildar Yadagirigutta" },
+  ]},
+  { section: "SYSTEM", accounts: [
+    { email: "superadmin@lcms.local", role: "Super Admin" },
+    { email: "admin@lcms.local", role: "Admin" },
+    { email: "dataentry@lcms.local", role: "Data Entry Operator" },
+    { email: "viewer@lcms.local", role: "Read-Only Viewer" },
+  ]},
+];
+
 export default function Login() {
   const [showPassword, setShowPassword] = useState(false);
   const [email, setEmail] = useState("");
