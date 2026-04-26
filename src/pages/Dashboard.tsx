@@ -47,6 +47,11 @@ export default function Dashboard() {
   const gpApprovalPending = cases.filter(c => c.gpApprovalStatus === "Pending");
   const collectorApprovalPending = cases.filter(c => c.collectorApprovalStatus === "Pending");
   const hearingScheduled = cases.filter(c => c.status === "Hearing Scheduled");
+  // Government workflow KPIs
+  const instructionsPending = cases.filter(c => c.status !== "Closed" && (c.instructionsFiled === "Pending" || c.instructionsFiled === "No"));
+  const srNumberPending = cases.filter(c => c.status !== "Closed" && c.counterFiled === "Yes" && !c.srNumber);
+  const directionsPending = cases.filter(c => (c.directions || []).some(d => d.status !== "Completed"));
+  const closurePending = cases.filter(c => c.disposed === "Yes" && !c.closed);
 
   // Urgency: hearings tomorrow
   const tomorrow = new Date(REF_DATE);
