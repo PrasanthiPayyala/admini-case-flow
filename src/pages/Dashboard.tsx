@@ -9,7 +9,7 @@ import { departments, divisions } from "@/data/sampleData";
 import {
   Briefcase, Scale, CalendarDays, Bell, AlertTriangle, CheckCircle2,
   Clock, TrendingUp, MapPin, Gavel, Building2, ShieldCheck, Activity, FileText, Users,
-  ArrowRight, Landmark, UserCheck, FolderOpen, Archive, Eye, Hourglass
+  ArrowRight, Landmark, UserCheck, FolderOpen, Archive, Eye, Hourglass, ClipboardList, Lock as LockIcon
 } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from "recharts";
 import { Link, useNavigate } from "react-router-dom";
@@ -47,6 +47,11 @@ export default function Dashboard() {
   const gpApprovalPending = cases.filter(c => c.gpApprovalStatus === "Pending");
   const collectorApprovalPending = cases.filter(c => c.collectorApprovalStatus === "Pending");
   const hearingScheduled = cases.filter(c => c.status === "Hearing Scheduled");
+  // Government workflow KPIs
+  const instructionsPending = cases.filter(c => c.status !== "Closed" && (c.instructionsFiled === "Pending" || c.instructionsFiled === "No"));
+  const srNumberPending = cases.filter(c => c.status !== "Closed" && c.counterFiled === "Yes" && !c.srNumber);
+  const directionsPending = cases.filter(c => (c.directions || []).some(d => d.status !== "Completed"));
+  const closurePending = cases.filter(c => c.disposed === "Yes" && !c.closed);
 
   // Urgency: hearings tomorrow
   const tomorrow = new Date(REF_DATE);
@@ -193,7 +198,17 @@ export default function Dashboard() {
         </div>
       )}
 
-      {/* Collector-specific: Collectorate involvement + land */}
+      {/* Government workflow KPI row */}
+      {showApprovalCards && (
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-2.5 mb-4">
+          <StatsCard title="Instructions Pending" value={instructionsPending.length} icon={FileText} subtitle="Awaiting dept input" href="/cases?instructions=Pending" accent="urgent" />
+          <StatsCard title="S.R. Number Pending" value={srNumberPending.length} icon={ClipboardList} subtitle="Counter filed, no SR" href="/cases?sr=missing" accent="warning" />
+          <StatsCard title="Action Taken Pending" value={directionsPending.length} icon={AlertTriangle} subtitle="Directions open" href="/cases?directions=Pending" accent="urgent" />
+          <StatsCard title="Pending Closures" value={closurePending.length} icon={LockIcon} subtitle="Disposed not closed" href="/cases?closure=Pending" accent="info" />
+        </div>
+      )}
+
+
       {showCollectorCards && (
         <div className="grid grid-cols-2 md:grid-cols-4 gap-2.5 mb-4">
           <StatsCard title="Collectorate as Respondent" value={collectRespondent.length} icon={Landmark} href="/cases?involvement=Collectorate+as+Respondent" accent="urgent" />

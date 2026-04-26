@@ -13,14 +13,23 @@ import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 
 export default function CourtLiaisonUpdates() {
-  const { hearings, cases, updateHearing, updateCase } = useData();
+  const { hearings, cases, updateHearing, updateCase, markDisposed } = useData();
   const { toast } = useToast();
   const scheduledHearings = hearings.filter(h => h.status === "Scheduled");
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
+  const [dateFilter, setDateFilter] = useState<"all" | "today" | "tomorrow">("all");
   const [form, setForm] = useState({ listed: "yes", outcome: "", nextDate: "", nextTime: "", orderPassed: false, orderSummary: "", complianceRequired: false, complianceStatus: "Not Applicable", complianceDueDate: "", remarks: "" });
 
-  const filtered = scheduledHearings.filter(h => !searchTerm || h.caseTitle.toLowerCase().includes(searchTerm.toLowerCase()) || h.court.toLowerCase().includes(searchTerm.toLowerCase()));
+  const today = new Date().toISOString().slice(0, 10);
+  const tomorrowStr = (() => { const t = new Date(); t.setDate(t.getDate() + 1); return t.toISOString().slice(0, 10); })();
+
+  const filtered = scheduledHearings.filter(h => {
+    if (searchTerm && !h.caseTitle.toLowerCase().includes(searchTerm.toLowerCase()) && !h.court.toLowerCase().includes(searchTerm.toLowerCase())) return false;
+    if (dateFilter === "today" && h.date !== today) return false;
+    if (dateFilter === "tomorrow" && h.date !== tomorrowStr) return false;
+    return true;
+  });
   const selected = filtered.find(h => h.id === selectedId);
   const linkedCase = selected ? cases.find(c => c.id === selected.caseId) : null;
 
@@ -40,8 +49,14 @@ export default function CourtLiaisonUpdates() {
     if (form.nextDate) caseUpdates.nextHearing = form.nextDate;
     if (form.orderPassed) { caseUpdates.orderPassed = true; caseUpdates.orderSummary = form.orderSummary; }
     if (form.complianceRequired) { caseUpdates.complianceRequired = true; caseUpdates.complianceStatus = form.complianceStatus; caseUpdates.complianceDueDate = form.complianceDueDate; }
-    if (form.outcome === "Disposed" || form.outcome === "Dismissed") caseUpdates.status = "Closed";
-    else if (form.outcome) caseUpdates.status = "Ongoing";
+    if (form.outcome === "Disposed" || form.outcome === "Dismissed") {
+      caseUpdates.status = "Closed";
+      // Auto disposal prompt — mark disposed in workflow data
+      markDisposed(linkedCase.id, { disposalDate: selected.date, disposalSummary: form.orderSummary || form.remarks || `${form.outcome} at ${selected.court}` }, "HC Liaison Officer", "High Court Representative Officer");
+      toast({ title: `Case ${form.outcome}`, description: "Case marked as disposed in workflow. File can be closed once directions are completed." });
+    } else if (form.outcome) {
+      caseUpdates.status = "Ongoing";
+    }
     updateCase(linkedCase.id, caseUpdates);
     toast({ title: "Hearing updated", description: `${linkedCase.caseNumber} updated successfully.` });
     setSelectedId(null);
@@ -59,10 +74,20 @@ export default function CourtLiaisonUpdates() {
       <PageHeader title="Court Liaison – Daily Hearing Updates" breadcrumbs={[{ label: "Home", href: "/" }, { label: "Hearings", href: "/hearings" }, { label: "Daily Updates" }]} />
       <div className="grid md:grid-cols-3 gap-6">
         <div className="govt-card">
-          <div className="p-3 border-b border-border">
+          <div className="p-3 border-b border-border space-y-2">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
               <Input placeholder="Search case..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="pl-9 h-8 text-xs" />
+            </div>
+            <div className="flex gap-1">
+              {(["all","today","tomorrow"] as const).map(opt => {
+                const count = scheduledHearings.filter(h => opt === "all" ? true : opt === "today" ? h.date === today : h.date === tomorrowStr).length;
+                return (
+                  <button key={opt} onClick={() => setDateFilter(opt)} className={`flex-1 text-[10px] py-1 px-2 rounded border transition-colors ${dateFilter === opt ? "bg-primary text-primary-foreground border-primary" : "bg-muted/30 text-muted-foreground border-border hover:bg-muted"}`}>
+                    {opt === "all" ? "All" : opt === "today" ? "Today" : "Tomorrow"} ({count})
+                  </button>
+                );
+              })}
             </div>
           </div>
           <div className="divide-y divide-border max-h-[600px] overflow-y-auto">

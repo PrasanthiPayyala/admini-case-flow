@@ -6,7 +6,7 @@ import type { Party } from "@/data/sampleData";
 import { useParams, Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Edit, FileText, Calendar, ArrowLeft, ExternalLink, ShieldCheck, Plus, Printer, Scale, Users, Clock, Gavel, FolderOpen, Activity, Briefcase, Building2, CheckCircle2, AlertTriangle } from "lucide-react";
+import { Edit, FileText, Calendar, ArrowLeft, ExternalLink, ShieldCheck, Plus, Printer, Scale, Users, Clock, Gavel, FolderOpen, Activity, Briefcase, Building2, CheckCircle2, AlertTriangle, ClipboardList, Lock, FileCheck2, History } from "lucide-react";
 import { useData } from "@/contexts/DataContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
@@ -78,16 +78,29 @@ function WorkflowStep({ label, status, isActive }: { label: string; status: stri
 
 export default function CaseDetails() {
   const { id } = useParams();
-  const { cases, hearings, addHearing, updateCase, generateHearingId } = useData();
-  const { permissions } = useAuth();
+  const { cases, hearings, addHearing, updateCase, generateHearingId, addDirection, updateDirection, addActionTaken, setCounterStatus, markDisposed, closeFile } = useData();
+  const { permissions, currentUser } = useAuth();
   const { toast } = useToast();
   const caseData = cases.find(c => c.id === decodeURIComponent(id || ""));
   const [hearingDialog, setHearingDialog] = useState(false);
   const [hForm, setHForm] = useState({ date: "", time: "", type: "Regular Hearing", outcome: "", remarks: "", orderPassed: false, orderSummary: "", complianceRequired: false, complianceStatus: "Not Applicable", complianceDueDate: "" });
+  const [dirDialog, setDirDialog] = useState(false);
+  const [dirForm, setDirForm] = useState({ text: "", concernedOfficer: "", concernedDepartment: "", dueDate: "", priority: "Medium" as "High" | "Medium" | "Low" });
+  const [actionDialog, setActionDialog] = useState<{ open: boolean; linkedDirectionId?: string }>({ open: false });
+  const [actionForm, setActionForm] = useState({ summary: "", docName: "" });
+  const [disposeDialog, setDisposeDialog] = useState(false);
+  const [disposeForm, setDisposeForm] = useState({ disposalDate: new Date().toISOString().slice(0, 10), disposalSummary: "" });
 
   if (!caseData) return <AppLayout><div className="text-center py-20 text-muted-foreground">Case not found</div></AppLayout>;
 
   const caseHearings = hearings.filter(h => h.caseId === caseData.id);
+  const directions = caseData.directions || [];
+  const actionsTaken = caseData.actionsTaken || [];
+  const auditTrail = caseData.auditTrail || [];
+  const actorName = currentUser?.name || "Unknown";
+  const actorRole = currentUser?.role || "";
+  const pendingDirections = directions.filter(d => d.status !== "Completed");
+  const canCloseFile = caseData.disposed === "Yes" && pendingDirections.length === 0 && !caseData.closed;
 
   const handleAddHearing = () => {
     const hid = generateHearingId();
@@ -108,6 +121,43 @@ export default function CaseDetails() {
     setHearingDialog(false);
     setHForm({ date: "", time: "", type: "Regular Hearing", outcome: "", remarks: "", orderPassed: false, orderSummary: "", complianceRequired: false, complianceStatus: "Not Applicable", complianceDueDate: "" });
   };
+
+  const submitDirection = () => {
+    if (!dirForm.text || !dirForm.concernedOfficer) { toast({ title: "Missing fields", description: "Direction text and concerned officer required.", variant: "destructive" }); return; }
+    addDirection(caseData.id, { text: dirForm.text, issuedBy: actorName, concernedOfficer: dirForm.concernedOfficer, concernedDepartment: dirForm.concernedDepartment, dueDate: dirForm.dueDate, priority: dirForm.priority, status: "Pending" }, actorName, actorRole);
+    toast({ title: "Direction issued", description: `Assigned to ${dirForm.concernedOfficer}.` });
+    setDirDialog(false);
+    setDirForm({ text: "", concernedOfficer: "", concernedDepartment: "", dueDate: "", priority: "Medium" });
+  };
+
+  const submitAction = () => {
+    if (!actionForm.summary) { toast({ title: "Summary required", variant: "destructive" }); return; }
+    addActionTaken(caseData.id, { summary: actionForm.summary, doc: actionForm.docName ? { name: actionForm.docName } : null, uploadedBy: actorName, linkedDirectionId: actionDialog.linkedDirectionId }, actorName, actorRole);
+    toast({ title: "Action recorded", description: actionDialog.linkedDirectionId ? "Linked direction marked Completed." : "Action taken logged." });
+    setActionDialog({ open: false });
+    setActionForm({ summary: "", docName: "" });
+  };
+
+  const submitDisposal = () => {
+    if (!disposeForm.disposalSummary) { toast({ title: "Summary required", variant: "destructive" }); return; }
+    markDisposed(caseData.id, disposeForm, actorName, actorRole);
+    toast({ title: "Case marked as disposed" });
+    setDisposeDialog(false);
+  };
+
+  const handleCloseFile = () => {
+    const r = closeFile(caseData.id, actorName, actorRole);
+    if (!r.ok) { toast({ title: "Cannot close file", description: r.reason, variant: "destructive" }); return; }
+    toast({ title: "File closed & archived" });
+  };
+
+  const handleCounterDraftReady = () => {
+    setCounterStatus(caseData.id, { counterDraftStatus: "Draft Ready", gpApprovalStatus: "Pending", pendingAtLevel: "GP Approval", instructionsFiled: "Yes", counterFiled: "No" }, actorName, actorRole, "Counter Draft Ready → GP");
+    toast({ title: "Sent for GP Approval" });
+  };
+
+  const priorityColor = (p: string) => p === "High" ? "bg-red-100 text-red-800 border-red-300" : p === "Medium" ? "bg-amber-100 text-amber-800 border-amber-300" : "bg-emerald-100 text-emerald-800 border-emerald-300";
+  const statusColor = (s: string) => s === "Completed" ? "bg-emerald-100 text-emerald-800 border-emerald-300" : s === "In Progress" ? "bg-blue-100 text-blue-800 border-blue-300" : "bg-amber-100 text-amber-800 border-amber-300";
 
   return (
     <AppLayout>
@@ -194,28 +244,145 @@ export default function CaseDetails() {
               </div>
             )}
 
+            {/* Government workflow status row */}
+            <div className="grid grid-cols-2 md:grid-cols-5 gap-2 mb-3 text-xs">
+              <div className="bg-muted/40 rounded p-2"><span className="text-[10px] text-muted-foreground">Instructions Filed</span><p className="font-semibold">{caseData.instructionsFiled || "-"}</p></div>
+              <div className="bg-muted/40 rounded p-2"><span className="text-[10px] text-muted-foreground">Counter Filed</span><p className="font-semibold">{caseData.counterFiled || "-"}</p></div>
+              <div className="bg-muted/40 rounded p-2"><span className="text-[10px] text-muted-foreground">S.R. Number</span><p className="font-semibold">{caseData.srNumber || "—"}</p></div>
+              <div className="bg-muted/40 rounded p-2"><span className="text-[10px] text-muted-foreground">Disposed</span><p className="font-semibold">{caseData.disposed || "No"}</p></div>
+              <div className="bg-muted/40 rounded p-2"><span className="text-[10px] text-muted-foreground">File Closed</span><p className="font-semibold">{caseData.closed ? `Yes (${caseData.closedAt})` : "No"}</p></div>
+            </div>
+
             {/* Approval Actions */}
-            {(permissions?.canApproveGP || permissions?.canApproveCollector) && (
-              <div className="mt-3 flex gap-2">
-                {permissions?.canApproveGP && caseData.gpApprovalStatus === "Pending" && (
-                  <Button size="sm" variant="outline" className="text-xs" onClick={() => {
-                    updateCase(caseData.id, { gpApprovalStatus: "Approved", pendingAtLevel: "Collector Approval", lastUpdated: new Date().toISOString().slice(0, 10) });
-                    toast({ title: "GP Approval granted" });
-                  }}>
-                    <CheckCircle2 className="h-3.5 w-3.5 mr-1.5" />Approve GP
-                  </Button>
-                )}
-                {permissions?.canApproveCollector && caseData.collectorApprovalStatus === "Pending" && (
-                  <Button size="sm" onClick={() => {
-                    updateCase(caseData.id, { collectorApprovalStatus: "Approved", counterDraftStatus: "Filed", pendingAtLevel: "Hearing Update", lastUpdated: new Date().toISOString().slice(0, 10) });
-                    toast({ title: "Collector Approval granted" });
-                  }}>
-                    <CheckCircle2 className="h-3.5 w-3.5 mr-1.5" />Collector Approve
-                  </Button>
-                )}
+            <div className="flex flex-wrap gap-2">
+              {permissions?.canEditCase && caseData.counterDraftStatus !== "Filed" && caseData.gpApprovalStatus !== "Pending" && caseData.gpApprovalStatus !== "Approved" && (
+                <Button size="sm" variant="outline" className="text-xs" onClick={handleCounterDraftReady}>
+                  <FileCheck2 className="h-3.5 w-3.5 mr-1.5" />Send Counter Draft to GP
+                </Button>
+              )}
+              {permissions?.canApproveGP && caseData.gpApprovalStatus === "Pending" && (
+                <Button size="sm" variant="outline" className="text-xs" onClick={() => {
+                  setCounterStatus(caseData.id, { gpApprovalStatus: "Approved", pendingAtLevel: "Collector Approval" }, actorName, actorRole, "GP Approved");
+                  toast({ title: "GP Approval granted" });
+                }}>
+                  <CheckCircle2 className="h-3.5 w-3.5 mr-1.5" />Approve GP
+                </Button>
+              )}
+              {permissions?.canApproveCollector && caseData.collectorApprovalStatus === "Pending" && (
+                <Button size="sm" onClick={() => {
+                  setCounterStatus(caseData.id, { collectorApprovalStatus: "Approved", counterDraftStatus: "Filed", counterFiled: "Yes", pendingAtLevel: "Hearing Update" }, actorName, actorRole, "Collector Approved & Counter Filed");
+                  toast({ title: "Collector Approval granted; counter marked filed" });
+                }}>
+                  <CheckCircle2 className="h-3.5 w-3.5 mr-1.5" />Collector Approve & File
+                </Button>
+              )}
+              {permissions?.canEditCase && caseData.disposed !== "Yes" && (
+                <Button size="sm" variant="outline" className="text-xs" onClick={() => setDisposeDialog(true)}>
+                  <Gavel className="h-3.5 w-3.5 mr-1.5" />Mark Disposed
+                </Button>
+              )}
+              {canCloseFile && (
+                <Button size="sm" variant="default" className="text-xs" onClick={handleCloseFile}>
+                  <Lock className="h-3.5 w-3.5 mr-1.5" />Close & Archive File
+                </Button>
+              )}
+            </div>
+            {caseData.disposed === "Yes" && pendingDirections.length > 0 && (
+              <p className="text-[10px] text-amber-700 mt-2">⚠ Cannot close: {pendingDirections.length} direction(s) still pending action.</p>
+            )}
+          </div>
+
+          {/* Directions to Concerned Officers */}
+          <div className="govt-section-card p-4">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-xs font-semibold text-foreground flex items-center gap-1.5"><ClipboardList className="h-3.5 w-3.5" />Directions to Concerned Officers ({directions.length})</h3>
+              {permissions?.canEditCase && (
+                <Button size="sm" variant="outline" className="h-7 text-[10px]" onClick={() => setDirDialog(true)}><Plus className="h-3 w-3 mr-1" />Issue Direction</Button>
+              )}
+            </div>
+            {directions.length === 0 ? (
+              <p className="text-xs text-muted-foreground text-center py-4">No directions issued yet.</p>
+            ) : (
+              <div className="space-y-2">
+                {directions.map(d => (
+                  <div key={d.id} className="border border-border rounded p-2.5 text-xs">
+                    <div className="flex items-start justify-between gap-2 mb-1">
+                      <div className="flex-1">
+                        <p className="font-medium text-foreground">{d.text}</p>
+                        <p className="text-[10px] text-muted-foreground mt-0.5">
+                          To: <span className="font-medium">{d.concernedOfficer}</span>
+                          {d.concernedDepartment && ` · ${d.concernedDepartment}`}
+                          {d.dueDate && ` · Due ${d.dueDate}`}
+                          {` · Issued ${d.issuedAt} by ${d.issuedBy}`}
+                        </p>
+                      </div>
+                      <div className="flex flex-col gap-1 items-end">
+                        <span className={`px-1.5 py-0.5 rounded text-[9px] font-semibold border ${priorityColor(d.priority)}`}>{d.priority}</span>
+                        <span className={`px-1.5 py-0.5 rounded text-[9px] font-semibold border ${statusColor(d.status)}`}>{d.status}</span>
+                      </div>
+                    </div>
+                    <div className="flex gap-1.5 mt-1.5">
+                      {d.status !== "Completed" && permissions?.canEditCase && (
+                        <>
+                          {d.status === "Pending" && (
+                            <Button size="sm" variant="outline" className="h-6 text-[10px]" onClick={() => updateDirection(caseData.id, d.id, { status: "In Progress" }, actorName, actorRole)}>Start</Button>
+                          )}
+                          <Button size="sm" variant="outline" className="h-6 text-[10px]" onClick={() => { setActionDialog({ open: true, linkedDirectionId: d.id }); }}>Record Action</Button>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                ))}
               </div>
             )}
           </div>
+
+          {/* Action Taken Log */}
+          <div className="govt-section-card p-4">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-xs font-semibold text-foreground flex items-center gap-1.5"><CheckCircle2 className="h-3.5 w-3.5" />Action Taken ({actionsTaken.length})</h3>
+              {permissions?.canEditCase && (
+                <Button size="sm" variant="outline" className="h-7 text-[10px]" onClick={() => setActionDialog({ open: true })}><Plus className="h-3 w-3 mr-1" />Record Action</Button>
+              )}
+            </div>
+            {actionsTaken.length === 0 ? (
+              <p className="text-xs text-muted-foreground text-center py-4">No actions recorded yet.</p>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full govt-table">
+                  <thead><tr><th>Date</th><th>Summary</th><th>Document</th><th>Linked Direction</th><th>By</th></tr></thead>
+                  <tbody>
+                    {actionsTaken.map(a => {
+                      const linked = a.linkedDirectionId ? directions.find(x => x.id === a.linkedDirectionId) : null;
+                      return (
+                        <tr key={a.id}>
+                          <td className="whitespace-nowrap">{a.uploadedAt}</td>
+                          <td className="max-w-[280px]">{a.summary}</td>
+                          <td className="text-[10px]">{a.doc?.name || "—"}</td>
+                          <td className="text-[10px] text-muted-foreground max-w-[160px] truncate">{linked ? linked.text.slice(0, 40) + "…" : "—"}</td>
+                          <td className="text-[10px]">{a.uploadedBy}</td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+
+          {/* Disposal Summary */}
+          {caseData.disposed === "Yes" && (
+            <div className="govt-section-card p-4 bg-emerald-50/30 border-emerald-200">
+              <h3 className="text-xs font-semibold text-foreground mb-2 flex items-center gap-1.5"><Gavel className="h-3.5 w-3.5" />Disposal & Final Judgment</h3>
+              <div className="grid grid-cols-3 gap-3">
+                <DetailField label="Disposal Date" value={caseData.disposalDate} />
+                <DetailField label="Judgment Document" value={caseData.judgmentDoc?.name || "Not uploaded"} />
+                <DetailField label="Closed" value={caseData.closed ? `Yes — ${caseData.closedBy} (${caseData.closedAt})` : "Pending closure"} />
+              </div>
+              {caseData.disposalSummary && <div className="mt-2 bg-background rounded p-2 text-xs">{caseData.disposalSummary}</div>}
+            </div>
+          )}
+
 
           {/* Order & Compliance */}
           <div className="govt-section-card p-4">
@@ -319,27 +486,24 @@ export default function CaseDetails() {
             </Tabs>
           </div>
 
-          {/* Activity Trail */}
+          {/* Audit Trail */}
           <div className="govt-card">
-            <div className="govt-card-header"><h3><Activity className="h-3.5 w-3.5" />Activity Trail</h3></div>
-            <div className="p-4 space-y-3">
+            <div className="govt-card-header"><h3><History className="h-3.5 w-3.5" />Audit Trail ({auditTrail.length})</h3></div>
+            <div className="p-4 space-y-2 max-h-96 overflow-y-auto">
               {[
-                { action: "Case registered", by: "District Legal Officer", date: caseData.filingDate },
-                ...(caseData.counterDraftStatus !== "Not Started" ? [{ action: `Counter draft: ${caseData.counterDraftStatus}`, by: "Section Officer", date: caseData.lastHearing !== "-" ? caseData.lastHearing : caseData.filingDate }] : []),
-                ...(caseData.gpApprovalStatus !== "Not Applicable" ? [{ action: `GP Approval: ${caseData.gpApprovalStatus}`, by: "Government Pleader", date: caseData.lastUpdated }] : []),
-                ...(caseData.collectorApprovalStatus !== "Not Applicable" ? [{ action: `Collector Approval: ${caseData.collectorApprovalStatus}`, by: "District Collector", date: caseData.lastUpdated }] : []),
-                ...(caseData.orderPassed ? [{ action: "Order recorded", by: "HC Liaison Officer", date: caseData.lastUpdated }] : []),
-                ...(caseData.complianceRequired ? [{ action: `Compliance: ${caseData.complianceStatus}`, by: "Revenue Officer", date: caseData.lastUpdated }] : []),
-                { action: "Last updated", by: "System", date: caseData.lastUpdated },
+                { action: "Case registered", actor: "System", role: "—", ts: caseData.filingDate, details: "" },
+                ...auditTrail.map(a => ({ action: a.action, actor: a.actor, role: a.role, ts: a.ts.slice(0, 16).replace("T", " "), details: a.details || "" })),
               ].map((entry, i) => (
-                <div key={i} className="flex items-start gap-3">
+                <div key={i} className="flex items-start gap-3 border-l-2 border-primary/30 pl-2">
                   <div className="w-1.5 h-1.5 rounded-full bg-primary mt-1.5 flex-shrink-0" />
-                  <div className="flex-1">
+                  <div className="flex-1 min-w-0">
                     <p className="text-xs font-medium text-foreground">{entry.action}</p>
-                    <p className="text-[10px] text-muted-foreground">{entry.by} • {entry.date}</p>
+                    <p className="text-[10px] text-muted-foreground">{entry.actor}{entry.role && ` (${entry.role})`} • {entry.ts}</p>
+                    {entry.details && <p className="text-[10px] text-muted-foreground/80 italic mt-0.5 truncate">{entry.details}</p>}
                   </div>
                 </div>
               ))}
+              {auditTrail.length === 0 && <p className="text-[10px] text-muted-foreground italic">No workflow events yet.</p>}
             </div>
           </div>
         </div>
@@ -423,6 +587,53 @@ export default function CaseDetails() {
             <Button variant="outline" onClick={() => setHearingDialog(false)}>Cancel</Button>
             <Button onClick={handleAddHearing} disabled={!hForm.date}>Save Hearing</Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Direction Dialog */}
+      <Dialog open={dirDialog} onOpenChange={setDirDialog}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader><DialogTitle>Issue Direction to Concerned Officer</DialogTitle></DialogHeader>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1 col-span-2"><Label className="text-xs">Direction *</Label><Textarea value={dirForm.text} onChange={e => setDirForm({ ...dirForm, text: e.target.value })} rows={3} className="text-xs" placeholder="What action is required..." /></div>
+            <div className="space-y-1"><Label className="text-xs">Concerned Officer *</Label><Input value={dirForm.concernedOfficer} onChange={e => setDirForm({ ...dirForm, concernedOfficer: e.target.value })} className="h-8 text-xs" /></div>
+            <div className="space-y-1"><Label className="text-xs">Department</Label><Input value={dirForm.concernedDepartment} onChange={e => setDirForm({ ...dirForm, concernedDepartment: e.target.value })} className="h-8 text-xs" /></div>
+            <div className="space-y-1"><Label className="text-xs">Due Date</Label><Input type="date" value={dirForm.dueDate} onChange={e => setDirForm({ ...dirForm, dueDate: e.target.value })} className="h-8 text-xs" /></div>
+            <div className="space-y-1"><Label className="text-xs">Priority</Label>
+              <Select value={dirForm.priority} onValueChange={(v: "High" | "Medium" | "Low") => setDirForm({ ...dirForm, priority: v })}><SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+                <SelectContent>{["High","Medium","Low"].map(p => <SelectItem key={p} value={p}>{p}</SelectItem>)}</SelectContent>
+              </Select>
+            </div>
+          </div>
+          <DialogFooter><Button variant="outline" onClick={() => setDirDialog(false)}>Cancel</Button><Button onClick={submitDirection}>Issue Direction</Button></DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Action Taken Dialog */}
+      <Dialog open={actionDialog.open} onOpenChange={(o) => setActionDialog({ open: o, linkedDirectionId: actionDialog.linkedDirectionId })}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader><DialogTitle>Record Action Taken</DialogTitle></DialogHeader>
+          {actionDialog.linkedDirectionId && (
+            <p className="text-[10px] text-muted-foreground bg-muted/50 rounded p-2">Linked to direction — will mark as Completed on save.</p>
+          )}
+          <div className="space-y-3">
+            <div className="space-y-1"><Label className="text-xs">Summary *</Label><Textarea value={actionForm.summary} onChange={e => setActionForm({ ...actionForm, summary: e.target.value })} rows={3} className="text-xs" /></div>
+            <div className="space-y-1"><Label className="text-xs">Supporting Document Name</Label><Input value={actionForm.docName} onChange={e => setActionForm({ ...actionForm, docName: e.target.value })} className="h-8 text-xs" placeholder="action_taken_report.pdf" /></div>
+          </div>
+          <DialogFooter><Button variant="outline" onClick={() => setActionDialog({ open: false })}>Cancel</Button><Button onClick={submitAction}>Save Action</Button></DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Disposal Dialog */}
+      <Dialog open={disposeDialog} onOpenChange={setDisposeDialog}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader><DialogTitle>Mark Case as Disposed</DialogTitle></DialogHeader>
+          <div className="space-y-3">
+            <div className="space-y-1"><Label className="text-xs">Disposal Date</Label><Input type="date" value={disposeForm.disposalDate} onChange={e => setDisposeForm({ ...disposeForm, disposalDate: e.target.value })} className="h-8 text-xs" /></div>
+            <div className="space-y-1"><Label className="text-xs">Disposal Summary *</Label><Textarea value={disposeForm.disposalSummary} onChange={e => setDisposeForm({ ...disposeForm, disposalSummary: e.target.value })} rows={3} className="text-xs" placeholder="Outcome of judgment / final order..." /></div>
+            <p className="text-[10px] text-muted-foreground">After disposal, the file can be closed once all directions are marked Completed.</p>
+          </div>
+          <DialogFooter><Button variant="outline" onClick={() => setDisposeDialog(false)}>Cancel</Button><Button onClick={submitDisposal}>Mark Disposed</Button></DialogFooter>
         </DialogContent>
       </Dialog>
     </AppLayout>
