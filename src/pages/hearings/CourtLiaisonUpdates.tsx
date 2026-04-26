@@ -13,14 +13,23 @@ import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 
 export default function CourtLiaisonUpdates() {
-  const { hearings, cases, updateHearing, updateCase } = useData();
+  const { hearings, cases, updateHearing, updateCase, markDisposed } = useData();
   const { toast } = useToast();
   const scheduledHearings = hearings.filter(h => h.status === "Scheduled");
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
+  const [dateFilter, setDateFilter] = useState<"all" | "today" | "tomorrow">("all");
   const [form, setForm] = useState({ listed: "yes", outcome: "", nextDate: "", nextTime: "", orderPassed: false, orderSummary: "", complianceRequired: false, complianceStatus: "Not Applicable", complianceDueDate: "", remarks: "" });
 
-  const filtered = scheduledHearings.filter(h => !searchTerm || h.caseTitle.toLowerCase().includes(searchTerm.toLowerCase()) || h.court.toLowerCase().includes(searchTerm.toLowerCase()));
+  const today = new Date().toISOString().slice(0, 10);
+  const tomorrowStr = (() => { const t = new Date(); t.setDate(t.getDate() + 1); return t.toISOString().slice(0, 10); })();
+
+  const filtered = scheduledHearings.filter(h => {
+    if (searchTerm && !h.caseTitle.toLowerCase().includes(searchTerm.toLowerCase()) && !h.court.toLowerCase().includes(searchTerm.toLowerCase())) return false;
+    if (dateFilter === "today" && h.date !== today) return false;
+    if (dateFilter === "tomorrow" && h.date !== tomorrowStr) return false;
+    return true;
+  });
   const selected = filtered.find(h => h.id === selectedId);
   const linkedCase = selected ? cases.find(c => c.id === selected.caseId) : null;
 
