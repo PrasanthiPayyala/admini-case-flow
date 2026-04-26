@@ -4,7 +4,7 @@ import {
   LayoutDashboard, Briefcase, Scale, CalendarDays, Bell, BarChart3,
   Users, Shield, FileText, ClipboardList, Settings, User, Lock, LogOut,
   ChevronLeft, ChevronDown, ChevronRight, ShieldCheck, Gavel,
-  Building2, MapPin, Landmark, FolderOpen, Archive, Clock, CheckCircle2, AlertTriangle
+  Building2, MapPin, Landmark, FolderOpen, Archive, Clock, CheckCircle2, AlertTriangle, X
 } from "lucide-react";
 import { useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
@@ -41,9 +41,11 @@ const accountNav = [
 interface AppSidebarProps {
   collapsed: boolean;
   onToggle: () => void;
+  mobileOpen?: boolean;
+  onMobileClose?: () => void;
 }
 
-export function AppSidebar({ collapsed, onToggle }: AppSidebarProps) {
+export function AppSidebar({ collapsed, onToggle, mobileOpen, onMobileClose }: AppSidebarProps) {
   const location = useLocation();
   const navigate = useNavigate();
   const { permissions, logout } = useAuth();
@@ -90,7 +92,7 @@ export function AppSidebar({ collapsed, onToggle }: AppSidebarProps) {
     const active = location.pathname === item.href ||
       (item.href !== "/" && location.pathname.startsWith(item.href));
     return (
-      <Link to={item.href} className={cn(
+      <Link to={item.href} onClick={onMobileClose} className={cn(
         "flex items-center gap-3 px-3 py-2 rounded-md text-sm transition-colors",
         active ? "bg-sidebar-accent text-sidebar-accent-foreground font-medium"
           : "text-sidebar-foreground/80 hover:bg-sidebar-accent/50 hover:text-sidebar-accent-foreground"
@@ -113,19 +115,29 @@ export function AppSidebar({ collapsed, onToggle }: AppSidebarProps) {
 
   return (
     <aside className={cn(
-      "h-screen bg-sidebar flex flex-col border-r border-sidebar-border transition-all duration-200 flex-shrink-0",
+      "h-screen bg-sidebar flex flex-col border-r border-sidebar-border transition-all duration-300 flex-shrink-0",
+      // Mobile: fixed drawer, hidden by default, slides in when mobileOpen
+      "fixed inset-y-0 left-0 z-50",
+      mobileOpen ? "translate-x-0" : "-translate-x-full",
+      // Desktop: static in normal flow, always visible
+      "md:static md:translate-x-0 md:z-auto",
       collapsed ? "w-16" : "w-56"
     )}>
       <div className="p-3 border-b border-sidebar-border">
         {!collapsed ? (
-          <div className="flex items-center gap-2">
-            <div className="w-7 h-7 rounded bg-govt-gold/20 flex items-center justify-center">
-              <Scale className="h-3.5 w-3.5 text-govt-gold" />
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2">
+              <div className="w-7 h-7 rounded bg-govt-gold/20 flex items-center justify-center">
+                <Scale className="h-3.5 w-3.5 text-govt-gold" />
+              </div>
+              <div>
+                <h2 className="text-xs font-bold text-sidebar-primary leading-tight">LCMS</h2>
+                <p className="text-[9px] text-sidebar-foreground/60 leading-tight">Yadadri Bhuvanagiri</p>
+              </div>
             </div>
-            <div>
-              <h2 className="text-xs font-bold text-sidebar-primary leading-tight">LCMS</h2>
-              <p className="text-[9px] text-sidebar-foreground/60 leading-tight">Yadadri Bhuvanagiri</p>
-            </div>
+            <button onClick={onMobileClose} className="md:hidden p-1 rounded text-sidebar-foreground/60 hover:text-sidebar-foreground hover:bg-sidebar-accent/50">
+              <X className="h-4 w-4" />
+            </button>
           </div>
         ) : (
           <div className="w-7 h-7 rounded bg-govt-gold/20 flex items-center justify-center mx-auto">

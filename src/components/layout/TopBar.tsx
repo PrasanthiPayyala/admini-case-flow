@@ -1,4 +1,4 @@
-import { Bell, Search, User, LogOut } from "lucide-react";
+import { Bell, Search, User, LogOut, Menu } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem,
@@ -7,7 +7,11 @@ import {
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 
-export function TopBar() {
+interface TopBarProps {
+  onMenuClick?: () => void;
+}
+
+export function TopBar({ onMenuClick }: TopBarProps) {
   const { currentUser, logout } = useAuth();
   const navigate = useNavigate();
 
@@ -17,9 +21,13 @@ export function TopBar() {
   };
 
   return (
-    <header className="h-14 bg-card border-b border-border flex items-center justify-between px-6 flex-shrink-0">
-      <div className="flex items-center gap-4 flex-1 max-w-md">
-        <div className="relative flex-1">
+    <header className="h-14 bg-card border-b border-border flex items-center justify-between px-3 md:px-6 flex-shrink-0">
+      <div className="flex items-center gap-2 md:gap-4 flex-1 max-w-md">
+        {/* Hamburger — mobile only */}
+        <button onClick={onMenuClick} className="md:hidden p-2 rounded-md hover:bg-muted transition-colors flex-shrink-0">
+          <Menu className="h-5 w-5 text-muted-foreground" />
+        </button>
+        <div className="relative flex-1 hidden sm:block">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input placeholder="Search cases, hearings, officers..." className="pl-9 h-9 text-sm bg-muted/50 border-border" />
         </div>
