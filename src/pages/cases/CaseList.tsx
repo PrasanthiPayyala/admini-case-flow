@@ -1,7 +1,7 @@
 import { AppLayout } from "@/components/layout/AppLayout";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { StatusBadge } from "@/components/shared/StatusBadge";
-import { caseTypes, mandals, departments, courtNames, priorities, collectorateInvolvementTypes, HC_STATUS_URL, divisions, pendingAtLevels } from "@/data/sampleData";
+import { caseTypes, mandals, departments, courtNames, priorities, collectorateInvolvementTypes, HC_STATUS_URL, divisions, pendingAtLevels, caseNoYear } from "@/data/sampleData";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -13,7 +13,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { useAuth } from "@/contexts/AuthContext";
 import { useRoleFilter } from "@/hooks/useRoleFilter";
 import { useState, useEffect, useMemo } from "react";
-import type { Party } from "@/data/sampleData";
+import type { Party, CaseRecord } from "@/data/sampleData";
 
 const STATUSES = ["Fresh","Ongoing","Hearing Scheduled","Counter Pending","Under Review","Appealed","Closed"];
 const DIVISION_NAMES = Object.keys(divisions);
