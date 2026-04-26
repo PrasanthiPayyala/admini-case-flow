@@ -85,7 +85,47 @@ export interface Party {
   name: string;
   type: string;
   department?: string;
+  isInternalDept?: boolean;
   remarks?: string;
+}
+
+export interface CaseDoc {
+  id: string;
+  name: string;
+  stage: string; // Filed | Interim | Counter | Compliance / Action Taken | Judgment | Miscellaneous
+  uploadedBy: string;
+  uploadedAt: string;
+  size?: string;
+}
+
+export interface DirectionRecord {
+  id: string;
+  text: string;
+  issuedBy: string;
+  issuedAt: string;
+  concernedOfficer: string;
+  concernedDepartment: string;
+  dueDate: string;
+  priority: "High" | "Medium" | "Low";
+  status: "Pending" | "In Progress" | "Completed";
+}
+
+export interface ActionTakenRecord {
+  id: string;
+  summary: string;
+  doc?: { name: string; size?: string } | null;
+  uploadedBy: string;
+  uploadedAt: string;
+  linkedDirectionId?: string;
+}
+
+export interface AuditEntry {
+  id: string;
+  ts: string;
+  actor: string;
+  role: string;
+  action: string;
+  details?: string;
 }
 
 export interface CaseRecord {
