@@ -589,6 +589,53 @@ export default function CaseDetails() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Direction Dialog */}
+      <Dialog open={dirDialog} onOpenChange={setDirDialog}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader><DialogTitle>Issue Direction to Concerned Officer</DialogTitle></DialogHeader>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1 col-span-2"><Label className="text-xs">Direction *</Label><Textarea value={dirForm.text} onChange={e => setDirForm({ ...dirForm, text: e.target.value })} rows={3} className="text-xs" placeholder="What action is required..." /></div>
+            <div className="space-y-1"><Label className="text-xs">Concerned Officer *</Label><Input value={dirForm.concernedOfficer} onChange={e => setDirForm({ ...dirForm, concernedOfficer: e.target.value })} className="h-8 text-xs" /></div>
+            <div className="space-y-1"><Label className="text-xs">Department</Label><Input value={dirForm.concernedDepartment} onChange={e => setDirForm({ ...dirForm, concernedDepartment: e.target.value })} className="h-8 text-xs" /></div>
+            <div className="space-y-1"><Label className="text-xs">Due Date</Label><Input type="date" value={dirForm.dueDate} onChange={e => setDirForm({ ...dirForm, dueDate: e.target.value })} className="h-8 text-xs" /></div>
+            <div className="space-y-1"><Label className="text-xs">Priority</Label>
+              <Select value={dirForm.priority} onValueChange={(v: "High" | "Medium" | "Low") => setDirForm({ ...dirForm, priority: v })}><SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+                <SelectContent>{["High","Medium","Low"].map(p => <SelectItem key={p} value={p}>{p}</SelectItem>)}</SelectContent>
+              </Select>
+            </div>
+          </div>
+          <DialogFooter><Button variant="outline" onClick={() => setDirDialog(false)}>Cancel</Button><Button onClick={submitDirection}>Issue Direction</Button></DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Action Taken Dialog */}
+      <Dialog open={actionDialog.open} onOpenChange={(o) => setActionDialog({ open: o, linkedDirectionId: actionDialog.linkedDirectionId })}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader><DialogTitle>Record Action Taken</DialogTitle></DialogHeader>
+          {actionDialog.linkedDirectionId && (
+            <p className="text-[10px] text-muted-foreground bg-muted/50 rounded p-2">Linked to direction — will mark as Completed on save.</p>
+          )}
+          <div className="space-y-3">
+            <div className="space-y-1"><Label className="text-xs">Summary *</Label><Textarea value={actionForm.summary} onChange={e => setActionForm({ ...actionForm, summary: e.target.value })} rows={3} className="text-xs" /></div>
+            <div className="space-y-1"><Label className="text-xs">Supporting Document Name</Label><Input value={actionForm.docName} onChange={e => setActionForm({ ...actionForm, docName: e.target.value })} className="h-8 text-xs" placeholder="action_taken_report.pdf" /></div>
+          </div>
+          <DialogFooter><Button variant="outline" onClick={() => setActionDialog({ open: false })}>Cancel</Button><Button onClick={submitAction}>Save Action</Button></DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Disposal Dialog */}
+      <Dialog open={disposeDialog} onOpenChange={setDisposeDialog}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader><DialogTitle>Mark Case as Disposed</DialogTitle></DialogHeader>
+          <div className="space-y-3">
+            <div className="space-y-1"><Label className="text-xs">Disposal Date</Label><Input type="date" value={disposeForm.disposalDate} onChange={e => setDisposeForm({ ...disposeForm, disposalDate: e.target.value })} className="h-8 text-xs" /></div>
+            <div className="space-y-1"><Label className="text-xs">Disposal Summary *</Label><Textarea value={disposeForm.disposalSummary} onChange={e => setDisposeForm({ ...disposeForm, disposalSummary: e.target.value })} rows={3} className="text-xs" placeholder="Outcome of judgment / final order..." /></div>
+            <p className="text-[10px] text-muted-foreground">After disposal, the file can be closed once all directions are marked Completed.</p>
+          </div>
+          <DialogFooter><Button variant="outline" onClick={() => setDisposeDialog(false)}>Cancel</Button><Button onClick={submitDisposal}>Mark Disposed</Button></DialogFooter>
+        </DialogContent>
+      </Dialog>
     </AppLayout>
   );
 }
