@@ -6,7 +6,7 @@ import type { Party } from "@/data/sampleData";
 import { useParams, Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Edit, FileText, Calendar, ArrowLeft, ExternalLink, ShieldCheck, Plus, Printer, Scale, Users, Clock, Gavel, FolderOpen, Activity, Briefcase, Building2, CheckCircle2, AlertTriangle } from "lucide-react";
+import { Edit, FileText, Calendar, ArrowLeft, ExternalLink, ShieldCheck, Plus, Printer, Scale, Users, Clock, Gavel, FolderOpen, Activity, Briefcase, Building2, CheckCircle2, AlertTriangle, ClipboardList, Lock, FileCheck2, History } from "lucide-react";
 import { useData } from "@/contexts/DataContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
