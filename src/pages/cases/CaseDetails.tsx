@@ -159,7 +159,7 @@ export default function CaseDetails() {
   const priorityColor = (p: string) => p === "High" ? "bg-red-100 text-red-800 border-red-300" : p === "Medium" ? "bg-amber-100 text-amber-800 border-amber-300" : "bg-emerald-100 text-emerald-800 border-emerald-300";
   const statusColor = (s: string) => s === "Completed" ? "bg-emerald-100 text-emerald-800 border-emerald-300" : s === "In Progress" ? "bg-blue-100 text-blue-800 border-blue-300" : "bg-amber-100 text-amber-800 border-amber-300";
 
-
+  return (
     <AppLayout>
       <PageHeader
         title={caseData.title}
