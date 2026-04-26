@@ -18,7 +18,8 @@ import { PartyEditor } from "./AddCase";
 export default function EditCase() {
   const { id } = useParams();
   const { cases, updateCase, closeFile } = useData();
-  const { user } = useAuth();
+  const { currentUser } = useAuth();
+  const user = currentUser;
   const navigate = useNavigate();
   const { toast } = useToast();
   const caseData = cases.find(c => c.id === decodeURIComponent(id || ""));
