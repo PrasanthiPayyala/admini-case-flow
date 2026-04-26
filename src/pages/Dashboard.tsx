@@ -9,7 +9,7 @@ import { departments, divisions } from "@/data/sampleData";
 import {
   Briefcase, Scale, CalendarDays, Bell, AlertTriangle, CheckCircle2,
   Clock, TrendingUp, MapPin, Gavel, Building2, ShieldCheck, Activity, FileText, Users,
-  ArrowRight, Landmark, UserCheck, FolderOpen, Archive, Eye, Hourglass
+  ArrowRight, Landmark, UserCheck, FolderOpen, Archive, Eye, Hourglass, ClipboardList, Lock as LockIcon
 } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from "recharts";
 import { Link, useNavigate } from "react-router-dom";
