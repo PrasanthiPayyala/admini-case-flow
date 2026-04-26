@@ -74,10 +74,20 @@ export default function CourtLiaisonUpdates() {
       <PageHeader title="Court Liaison – Daily Hearing Updates" breadcrumbs={[{ label: "Home", href: "/" }, { label: "Hearings", href: "/hearings" }, { label: "Daily Updates" }]} />
       <div className="grid md:grid-cols-3 gap-6">
         <div className="govt-card">
-          <div className="p-3 border-b border-border">
+          <div className="p-3 border-b border-border space-y-2">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
               <Input placeholder="Search case..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="pl-9 h-8 text-xs" />
+            </div>
+            <div className="flex gap-1">
+              {(["all","today","tomorrow"] as const).map(opt => {
+                const count = scheduledHearings.filter(h => opt === "all" ? true : opt === "today" ? h.date === today : h.date === tomorrowStr).length;
+                return (
+                  <button key={opt} onClick={() => setDateFilter(opt)} className={`flex-1 text-[10px] py-1 px-2 rounded border transition-colors ${dateFilter === opt ? "bg-primary text-primary-foreground border-primary" : "bg-muted/30 text-muted-foreground border-border hover:bg-muted"}`}>
+                    {opt === "all" ? "All" : opt === "today" ? "Today" : "Tomorrow"} ({count})
+                  </button>
+                );
+              })}
             </div>
           </div>
           <div className="divide-y divide-border max-h-[600px] overflow-y-auto">
