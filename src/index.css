@@ -146,4 +146,39 @@
   .dept-tile .count {
     @apply text-lg font-bold text-foreground;
   }
+
+  /* Responsive table — horizontal scroll on small screens */
+  .govt-table-scroll {
+    @apply overflow-x-auto w-full -mx-0;
+  }
+
+  /* Ensure tables don't collapse below a readable min-width */
+  .govt-table {
+    min-width: 480px;
+  }
+}
+
+/* Wrap tables inside govt-card with scroll on mobile */
+@media (max-width: 767px) {
+  .govt-card > table.govt-table,
+  .govt-card > .overflow-x-auto > table.govt-table {
+    display: table;
+  }
+
+  .govt-card > table {
+    display: block;
+    overflow-x: auto;
+    width: 100%;
+  }
+
+  /* Tighter page header on mobile */
+  h1 {
+    font-size: 1rem !important;
+    line-height: 1.4 !important;
+  }
+
+  /* Reduce gap on stat card grids */
+  .gap-2\.5 {
+    gap: 0.5rem;
+  }
 }
