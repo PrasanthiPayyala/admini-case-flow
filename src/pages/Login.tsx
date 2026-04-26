@@ -133,7 +133,7 @@ export default function Login() {
           </div>
         </div>
         <p className="text-[10px] text-primary-foreground/40">
-          © 2024 District Collectorate, Yadadri Bhuvanagiri. All rights reserved.
+          © 2026 District Collectorate, Yadadri Bhuvanagiri. All rights reserved.
         </p>
       </div>
 
