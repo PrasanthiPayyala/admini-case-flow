@@ -250,52 +250,65 @@ export default function CaseList() {
 
       <div className="govt-card overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="w-full govt-table">
+          <table className="w-full govt-table text-[11px]">
             <thead>
               <tr>
-                <th>Case No.</th>
+                <th className="w-10">Sl.</th>
+                <th>Dept</th>
+                <th>Type</th>
+                <th>Case No./Year</th>
                 <th>Title</th>
                 <th>Petitioner</th>
                 <th>Respondent</th>
-                <th>Type</th>
-                <th>Court</th>
-                <th>Division</th>
-                <th>Mandal</th>
-                <th>Dept</th>
-                <th>Priority</th>
-                <th>Status</th>
-                <th>Hearing</th>
+                <th>Instr.</th>
                 <th>Counter</th>
+                <th>S.R. No.</th>
+                <th>Next Hearing</th>
+                <th>→ Hearing</th>
+                <th>→ Counter</th>
+                <th>Disposed</th>
+                <th>Action Status</th>
                 <th>Pending At</th>
-                <th>Compliance</th>
                 <th>Officer</th>
+                <th>Updated</th>
                 <th className="w-12">Actions</th>
               </tr>
             </thead>
             <tbody>
-              {paged.map(c => {
+              {paged.map((c, idx) => {
                 const hearingDays = getDaysLeft(c.nextHearing);
                 const counterDays = getDaysLeft(c.counterFilingDueDate);
+                const slNo = c.slNo ?? ((page - 1) * PAGE_SIZE + idx + 1);
+                const openDirs = (c.directions || []).filter(d => d.status !== "Completed").length;
+                const actionStatus = c.closed ? "Closed" : c.disposed === "Yes" ? "Disposed, Open" : openDirs > 0 ? `${openDirs} Direction(s) Open` : c.complianceStatus === "Pending" ? "Compliance Pending" : c.complianceStatus === "Partially Complied" ? "Partial" : "On Track";
                 return (
                   <tr key={c.id}>
+                    <td className="text-center text-muted-foreground">{slNo}</td>
+                    <td className="max-w-[100px] truncate" title={c.department}>{c.department}</td>
+                    <td className="whitespace-nowrap">{c.caseType}</td>
                     <td className="font-medium text-foreground whitespace-nowrap">
-                      <Link to={`/cases/${encodeURIComponent(c.id)}`} className="hover:text-primary hover:underline">{c.caseNumber}</Link>
+                      <Link to={`/cases/${encodeURIComponent(c.id)}`} className="hover:text-primary hover:underline">{caseNoYear(c)}</Link>
                     </td>
-                    <td className="max-w-[130px] truncate">{c.title}</td>
+                    <td className="max-w-[140px] truncate" title={c.title}>{c.title}</td>
                     <td className="whitespace-nowrap"><PartyCell parties={c.petitioners} /></td>
                     <td className="whitespace-nowrap"><PartyCell parties={c.respondents} /></td>
-                    <td className="whitespace-nowrap">{c.caseType}</td>
-                    <td className="max-w-[100px] truncate">{c.court}</td>
-                    <td className="whitespace-nowrap text-[11px]">{c.division?.replace(" Division", "")}</td>
-                    <td className="whitespace-nowrap">{c.mandal}</td>
-                    <td className="max-w-[90px] truncate">{c.department}</td>
-                    <td><StatusBadge value={c.priority} type="priority" size="sm" /></td>
-                    <td><StatusBadge value={c.status} size="sm" /></td>
-                    <td className={`whitespace-nowrap text-xs ${hearingDays.className}`}>{hearingDays.label}</td>
-                    <td className={`whitespace-nowrap text-xs ${counterDays.className}`}>{counterDays.label}</td>
+                    <td><StatusBadge value={c.instructionsFiled || "Pending"} size="sm" /></td>
+                    <td><StatusBadge value={c.counterFiled || "No"} size="sm" /></td>
+                    <td className="text-[10px] whitespace-nowrap">{c.srNumber || "—"}</td>
+                    <td className="whitespace-nowrap text-[10px]">{c.nextHearing && c.nextHearing !== "-" ? c.nextHearing : "—"}</td>
+                    <td className={`whitespace-nowrap ${hearingDays.className}`}>{hearingDays.label}</td>
+                    <td className={`whitespace-nowrap ${counterDays.className}`}>{counterDays.label}</td>
+                    <td>
+                      {c.closed
+                        ? <Badge className="text-[9px] px-1 py-0 h-4 bg-muted text-muted-foreground">Closed</Badge>
+                        : c.disposed === "Yes"
+                          ? <Badge className="text-[9px] px-1 py-0 h-4 bg-emerald-100 text-emerald-800 border-emerald-300">Yes</Badge>
+                          : <span className="text-muted-foreground text-[10px]">No</span>}
+                    </td>
+                    <td className="text-[10px] whitespace-nowrap">{actionStatus}</td>
                     <td><StatusBadge value={c.pendingAtLevel} size="sm" /></td>
-                    <td><StatusBadge value={c.complianceStatus} size="sm" /></td>
-                    <td className="text-[10px] max-w-[80px] truncate">{c.assignedOfficer}</td>
+                    <td className="text-[10px] max-w-[80px] truncate" title={c.assignedOfficer}>{c.assignedOfficer}</td>
+                    <td className="text-[10px] whitespace-nowrap text-muted-foreground">{c.lastUpdated}</td>
                     <td>
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
@@ -313,7 +326,7 @@ export default function CaseList() {
                   </tr>
                 );
               })}
-              {paged.length === 0 && <tr><td colSpan={17} className="text-center py-6 text-muted-foreground text-xs">No cases found matching your filters</td></tr>}
+              {paged.length === 0 && <tr><td colSpan={20} className="text-center py-6 text-muted-foreground text-xs">No cases found matching your filters</td></tr>}
             </tbody>
           </table>
         </div>
