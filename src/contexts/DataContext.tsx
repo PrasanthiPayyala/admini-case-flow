@@ -60,6 +60,8 @@ const APPEALS_KEY = "lcms_appeals";
 const ALERTS_KEY = "lcms_alerts";
 const DOCS_KEY = "lcms_case_docs";
 const AUDIT_KEY = "lcms_audit";
+const SEED_VERSION_KEY = "lcms_seed_version";
+const CURRENT_SEED_VERSION = "2026.04.26-130cases";
 
 // Backfill any legacy/seed records missing the new workflow fields.
 function normaliseCase(c: CaseRecord, idx: number): CaseRecord {
@@ -85,12 +87,27 @@ function normaliseCase(c: CaseRecord, idx: number): CaseRecord {
   return { ...defaults, ...c, slNo: c.slNo ?? idx + 1 };
 }
 
+// One-time per version: clear cached seeds so new seed data appears.
+function ensureSeedVersion() {
+  if (typeof window === "undefined") return;
+  const v = localStorage.getItem(SEED_VERSION_KEY);
+  if (v !== CURRENT_SEED_VERSION) {
+    localStorage.removeItem(CASES_KEY);
+    localStorage.removeItem(HEARINGS_KEY);
+    localStorage.removeItem(APPEALS_KEY);
+    localStorage.removeItem(ALERTS_KEY);
+    localStorage.setItem(SEED_VERSION_KEY, CURRENT_SEED_VERSION);
+  }
+}
+ensureSeedVersion();
+
 function load<T>(key: string, seed: T[]): T[] {
   const stored = localStorage.getItem(key);
   if (stored) return JSON.parse(stored);
   localStorage.setItem(key, JSON.stringify(seed));
   return [...seed];
 }
+
 
 interface DataContextType {
   cases: CaseRecord[];
