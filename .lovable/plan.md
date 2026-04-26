@@ -1,68 +1,45 @@
-# Make all seeded role logins visible on the Login screen
+# Add department-specific logins for all 10 departments
 
-## What's actually happening
+## What exists today
 
-RDO logins (and 13 other role accounts) are **already built, seeded, and fully wired** with role-based permissions. They have always worked — you can sign in right now with:
+Only **one** Department Nodal Officer is seeded: `dept.revenue@lcms.local` (Revenue Department). The role-scoping logic in `useRoleFilter.ts` already filters cases by `currentUser.department`, so adding more nodal officers automatically gives each one a department-scoped view — no logic changes needed.
 
-- `rdo.bhongir@lcms.local` / `demo123`
-- `rdo.choutuppal@lcms.local` / `demo123`
-
-The reason it *looks* like they're missing: the Login page's "Demo Credentials" panel only lists 6 of the 21 accounts. So testers don't know the others exist.
+The system defines **10 departments** in `sampleData.ts`:
+Collectorate Legal Cell, Revenue Department, Land Records, Tahsildar Office, Survey & Settlement, Municipal Administration, Panchayat Raj, Roads & Buildings, Irrigation, Education Department.
 
 ## Fix
 
-Update **only** the demo credentials panel in `src/pages/Login.tsx` to expose all 21 seeded role logins, grouped by tier so the screen stays readable at the current government-style density.
+Add 9 new `Department Nodal Officer` accounts (one per missing department) and surface them on the Login screen.
 
-### Grouping shown on the login screen
+### New seeded accounts (all password `demo123`)
 
-```text
-LEADERSHIP
-  collector@lcms.local                District Collector
-  addlcollector.rev@lcms.local        Addl Collector (Revenue)
-  addlcollector.lb@lcms.local         Addl Collector (Local Bodies)
-  ao@lcms.local                       Administrative Officer
+| Email | Department |
+|---|---|
+| dept.revenue@lcms.local *(existing)* | Revenue Department |
+| dept.legalcell@lcms.local | Collectorate Legal Cell |
+| dept.landrecords@lcms.local | Land Records |
+| dept.tahsildar@lcms.local | Tahsildar Office |
+| dept.survey@lcms.local | Survey & Settlement |
+| dept.municipal@lcms.local | Municipal Administration |
+| dept.panchayat@lcms.local | Panchayat Raj |
+| dept.randb@lcms.local | Roads & Buildings |
+| dept.irrigation@lcms.local | Irrigation |
+| dept.education@lcms.local | Education Department |
 
-LEGAL CELL
-  legalofficer@lcms.local             District Legal Officer
-  liaisonofficer@lcms.local           HC Representative Officer
-  sectionc@lcms.local                 Section C Officer
-  sectiond@lcms.local                 Section D Officer
-  sectione@lcms.local                 Section E Officer
-  sectiong@lcms.local                 Section G Officer
+Each gets a realistic Telugu name, unique mobile (9000000040–48), `mandal: "All"`, and `Active` status.
 
-DIVISIONS / RDO
-  rdo.bhongir@lcms.local              RDO Bhongir
-  rdo.choutuppal@lcms.local           RDO Choutuppal
+### Files touched
 
-DEPARTMENTS & MANDALS
-  dept.revenue@lcms.local             Department Nodal Officer
-  tahsildar.bhongir@lcms.local        Tahsildar Bhongir
-  tahsildar.choutuppal@lcms.local     Tahsildar Choutuppal
-  tahsildar.alair@lcms.local          Tahsildar Alair
-  tahsildar.yadagirigutta@lcms.local  Tahsildar Yadagirigutta
+1. **`src/contexts/AuthContext.tsx`** — append 9 entries to `SEED_USERS`. The bump in length triggers the existing "force refresh seed users" guard in `loadUsers()`, so existing demo browsers will pick up the new accounts on next load.
+2. **`src/pages/Login.tsx`** — replace the single Revenue entry under `DEPARTMENTS & MANDALS` with a new dedicated `DEPARTMENT NODAL OFFICERS` group listing all 10 departments. Mandals stay in their own group.
 
-SYSTEM
-  superadmin@lcms.local               Super Admin
-  admin@lcms.local                    Admin
-  dataentry@lcms.local                Data Entry Operator
-  viewer@lcms.local                   Read-Only Viewer
+### What this enables (no extra code)
 
-All passwords: demo123
-```
-
-### Implementation details
-
-- Replace the existing `<div>` block in the left panel of `Login.tsx` (lines ~62–72) with a compact grouped list driven from a static array of `{ section, accounts: [{ email, role }] }`.
-- Render a single shared `Password: demo123` line at the bottom instead of repeating it per row.
-- Add a small "click to fill" affordance: clicking an email row populates the email field (password stays blank, user types `demo123`). Optional but useful given the count.
-- Make the panel scrollable inside its current container (`max-h` + `overflow-y-auto` with thin scrollbar) so it doesn't push the layout.
-- Keep the existing primary-blue background, gold accent, typography, and footer text. No visual redesign.
-- No changes to `AuthContext.tsx`, `permissions.ts`, sidebar, dashboards, routes, or data — all RDO/Section/Tahsildar/Addl Collector logic is already in place.
-
-## Files touched
-
-- `src/pages/Login.tsx` — only the demo credentials panel block.
+- Each nodal officer logs in and immediately sees only cases where `case.department === their department`.
+- Their dashboard, case list, alerts, reports, and audit logs are all already scoped through `useRoleFilter` / `getRoleDashboardType("department")`.
+- Sidebar shows the Departments section but hides Admin and Divisions, matching existing `Department Nodal Officer` permissions.
 
 ## Out of scope
 
-- No new roles, no new users, no permission changes, no schema changes, no rebuild.
+- No permission changes, no new roles, no new dashboards, no schema changes.
+- No changes to `permissions.ts` or `useRoleFilter.ts` — both already handle this role correctly.
