@@ -198,7 +198,17 @@ export default function Dashboard() {
         </div>
       )}
 
-      {/* Collector-specific: Collectorate involvement + land */}
+      {/* Government workflow KPI row */}
+      {showApprovalCards && (
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-2.5 mb-4">
+          <StatsCard title="Instructions Pending" value={instructionsPending.length} icon={FileText} subtitle="Awaiting dept input" href="/cases?instructions=Pending" accent="urgent" />
+          <StatsCard title="S.R. Number Pending" value={srNumberPending.length} icon={ClipboardList} subtitle="Counter filed, no SR" href="/cases?sr=missing" accent="warning" />
+          <StatsCard title="Action Taken Pending" value={directionsPending.length} icon={AlertTriangle} subtitle="Directions open" href="/cases?directions=Pending" accent="urgent" />
+          <StatsCard title="Pending Closures" value={closurePending.length} icon={Lock} subtitle="Disposed not closed" href="/cases?closure=Pending" accent="info" />
+        </div>
+      )}
+
+
       {showCollectorCards && (
         <div className="grid grid-cols-2 md:grid-cols-4 gap-2.5 mb-4">
           <StatsCard title="Collectorate as Respondent" value={collectRespondent.length} icon={Landmark} href="/cases?involvement=Collectorate+as+Respondent" accent="urgent" />
