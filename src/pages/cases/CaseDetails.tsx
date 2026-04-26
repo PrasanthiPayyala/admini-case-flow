@@ -486,27 +486,24 @@ export default function CaseDetails() {
             </Tabs>
           </div>
 
-          {/* Activity Trail */}
+          {/* Audit Trail */}
           <div className="govt-card">
-            <div className="govt-card-header"><h3><Activity className="h-3.5 w-3.5" />Activity Trail</h3></div>
-            <div className="p-4 space-y-3">
+            <div className="govt-card-header"><h3><History className="h-3.5 w-3.5" />Audit Trail ({auditTrail.length})</h3></div>
+            <div className="p-4 space-y-2 max-h-96 overflow-y-auto">
               {[
-                { action: "Case registered", by: "District Legal Officer", date: caseData.filingDate },
-                ...(caseData.counterDraftStatus !== "Not Started" ? [{ action: `Counter draft: ${caseData.counterDraftStatus}`, by: "Section Officer", date: caseData.lastHearing !== "-" ? caseData.lastHearing : caseData.filingDate }] : []),
-                ...(caseData.gpApprovalStatus !== "Not Applicable" ? [{ action: `GP Approval: ${caseData.gpApprovalStatus}`, by: "Government Pleader", date: caseData.lastUpdated }] : []),
-                ...(caseData.collectorApprovalStatus !== "Not Applicable" ? [{ action: `Collector Approval: ${caseData.collectorApprovalStatus}`, by: "District Collector", date: caseData.lastUpdated }] : []),
-                ...(caseData.orderPassed ? [{ action: "Order recorded", by: "HC Liaison Officer", date: caseData.lastUpdated }] : []),
-                ...(caseData.complianceRequired ? [{ action: `Compliance: ${caseData.complianceStatus}`, by: "Revenue Officer", date: caseData.lastUpdated }] : []),
-                { action: "Last updated", by: "System", date: caseData.lastUpdated },
+                { action: "Case registered", actor: "System", role: "—", ts: caseData.filingDate, details: "" },
+                ...auditTrail.map(a => ({ action: a.action, actor: a.actor, role: a.role, ts: a.ts.slice(0, 16).replace("T", " "), details: a.details || "" })),
               ].map((entry, i) => (
-                <div key={i} className="flex items-start gap-3">
+                <div key={i} className="flex items-start gap-3 border-l-2 border-primary/30 pl-2">
                   <div className="w-1.5 h-1.5 rounded-full bg-primary mt-1.5 flex-shrink-0" />
-                  <div className="flex-1">
+                  <div className="flex-1 min-w-0">
                     <p className="text-xs font-medium text-foreground">{entry.action}</p>
-                    <p className="text-[10px] text-muted-foreground">{entry.by} • {entry.date}</p>
+                    <p className="text-[10px] text-muted-foreground">{entry.actor}{entry.role && ` (${entry.role})`} • {entry.ts}</p>
+                    {entry.details && <p className="text-[10px] text-muted-foreground/80 italic mt-0.5 truncate">{entry.details}</p>}
                   </div>
                 </div>
               ))}
+              {auditTrail.length === 0 && <p className="text-[10px] text-muted-foreground italic">No workflow events yet.</p>}
             </div>
           </div>
         </div>
