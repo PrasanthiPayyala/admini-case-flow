@@ -40,7 +40,8 @@ export default function AuditLogs() {
         details: detailsTxt,
       };
     });
-    return [...live, ...seededAuditLogs];
+    const seedAsUnified: UnifiedLog[] = seededAuditLogs.map(s => ({ ...s, id: String(s.id) }));
+    return [...live, ...seedAsUnified];
   }, [globalAudit]);
 
   const filtered = allLogs.filter(l => {
