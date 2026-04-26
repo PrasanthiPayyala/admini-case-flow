@@ -122,7 +122,44 @@ export default function CaseDetails() {
     setHForm({ date: "", time: "", type: "Regular Hearing", outcome: "", remarks: "", orderPassed: false, orderSummary: "", complianceRequired: false, complianceStatus: "Not Applicable", complianceDueDate: "" });
   };
 
-  return (
+  const submitDirection = () => {
+    if (!dirForm.text || !dirForm.concernedOfficer) { toast({ title: "Missing fields", description: "Direction text and concerned officer required.", variant: "destructive" }); return; }
+    addDirection(caseData.id, { text: dirForm.text, issuedBy: actorName, concernedOfficer: dirForm.concernedOfficer, concernedDepartment: dirForm.concernedDepartment, dueDate: dirForm.dueDate, priority: dirForm.priority, status: "Pending" }, actorName, actorRole);
+    toast({ title: "Direction issued", description: `Assigned to ${dirForm.concernedOfficer}.` });
+    setDirDialog(false);
+    setDirForm({ text: "", concernedOfficer: "", concernedDepartment: "", dueDate: "", priority: "Medium" });
+  };
+
+  const submitAction = () => {
+    if (!actionForm.summary) { toast({ title: "Summary required", variant: "destructive" }); return; }
+    addActionTaken(caseData.id, { summary: actionForm.summary, doc: actionForm.docName ? { name: actionForm.docName } : null, uploadedBy: actorName, linkedDirectionId: actionDialog.linkedDirectionId }, actorName, actorRole);
+    toast({ title: "Action recorded", description: actionDialog.linkedDirectionId ? "Linked direction marked Completed." : "Action taken logged." });
+    setActionDialog({ open: false });
+    setActionForm({ summary: "", docName: "" });
+  };
+
+  const submitDisposal = () => {
+    if (!disposeForm.disposalSummary) { toast({ title: "Summary required", variant: "destructive" }); return; }
+    markDisposed(caseData.id, disposeForm, actorName, actorRole);
+    toast({ title: "Case marked as disposed" });
+    setDisposeDialog(false);
+  };
+
+  const handleCloseFile = () => {
+    const r = closeFile(caseData.id, actorName, actorRole);
+    if (!r.ok) { toast({ title: "Cannot close file", description: r.reason, variant: "destructive" }); return; }
+    toast({ title: "File closed & archived" });
+  };
+
+  const handleCounterDraftReady = () => {
+    setCounterStatus(caseData.id, { counterDraftStatus: "Draft Ready", gpApprovalStatus: "Pending", pendingAtLevel: "GP Approval", instructionsFiled: "Yes", counterFiled: "No" }, actorName, actorRole, "Counter Draft Ready → GP");
+    toast({ title: "Sent for GP Approval" });
+  };
+
+  const priorityColor = (p: string) => p === "High" ? "bg-red-100 text-red-800 border-red-300" : p === "Medium" ? "bg-amber-100 text-amber-800 border-amber-300" : "bg-emerald-100 text-emerald-800 border-emerald-300";
+  const statusColor = (s: string) => s === "Completed" ? "bg-emerald-100 text-emerald-800 border-emerald-300" : s === "In Progress" ? "bg-blue-100 text-blue-800 border-blue-300" : "bg-amber-100 text-amber-800 border-amber-300";
+
+
     <AppLayout>
       <PageHeader
         title={caseData.title}
