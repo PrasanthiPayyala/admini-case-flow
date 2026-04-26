@@ -7,6 +7,40 @@ import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 
+const DEMO_GROUPS: { section: string; accounts: { email: string; role: string }[] }[] = [
+  { section: "LEADERSHIP", accounts: [
+    { email: "collector@lcms.local", role: "District Collector" },
+    { email: "addlcollector.rev@lcms.local", role: "Addl Collector (Rev)" },
+    { email: "addlcollector.lb@lcms.local", role: "Addl Collector (LB)" },
+    { email: "ao@lcms.local", role: "Administrative Officer" },
+  ]},
+  { section: "LEGAL CELL", accounts: [
+    { email: "legalofficer@lcms.local", role: "District Legal Officer" },
+    { email: "liaisonofficer@lcms.local", role: "HC Representative" },
+    { email: "sectionc@lcms.local", role: "Section C Officer" },
+    { email: "sectiond@lcms.local", role: "Section D Officer" },
+    { email: "sectione@lcms.local", role: "Section E Officer" },
+    { email: "sectiong@lcms.local", role: "Section G Officer" },
+  ]},
+  { section: "DIVISIONS / RDO", accounts: [
+    { email: "rdo.bhongir@lcms.local", role: "RDO Bhongir" },
+    { email: "rdo.choutuppal@lcms.local", role: "RDO Choutuppal" },
+  ]},
+  { section: "DEPARTMENTS & MANDALS", accounts: [
+    { email: "dept.revenue@lcms.local", role: "Dept Nodal Officer" },
+    { email: "tahsildar.bhongir@lcms.local", role: "Tahsildar Bhongir" },
+    { email: "tahsildar.choutuppal@lcms.local", role: "Tahsildar Choutuppal" },
+    { email: "tahsildar.alair@lcms.local", role: "Tahsildar Alair" },
+    { email: "tahsildar.yadagirigutta@lcms.local", role: "Tahsildar Yadagirigutta" },
+  ]},
+  { section: "SYSTEM", accounts: [
+    { email: "superadmin@lcms.local", role: "Super Admin" },
+    { email: "admin@lcms.local", role: "Admin" },
+    { email: "dataentry@lcms.local", role: "Data Entry Operator" },
+    { email: "viewer@lcms.local", role: "Read-Only Viewer" },
+  ]},
+];
+
 export default function Login() {
   const [showPassword, setShowPassword] = useState(false);
   const [email, setEmail] = useState("");
@@ -59,15 +93,31 @@ export default function Login() {
               <span>Secured with SSL encryption & role-based access</span>
             </div>
           </div>
-          <div className="mt-10 bg-primary-foreground/5 rounded-lg p-4">
-            <p className="text-[10px] text-primary-foreground/60 font-semibold mb-2">DEMO CREDENTIALS</p>
-            <div className="grid grid-cols-2 gap-1 text-[10px] text-primary-foreground/50">
-              <span>superadmin@lcms.local</span><span>demo123</span>
-              <span>admin@lcms.local</span><span>demo123</span>
-              <span>collector@lcms.local</span><span>demo123</span>
-              <span>legalofficer@lcms.local</span><span>demo123</span>
-              <span>liaisonofficer@lcms.local</span><span>demo123</span>
-              <span>dataentry@lcms.local</span><span>demo123</span>
+          <div className="mt-10 bg-primary-foreground/5 rounded-lg p-3">
+            <div className="flex items-center justify-between mb-2">
+              <p className="text-[10px] text-primary-foreground/70 font-semibold tracking-wider">DEMO CREDENTIALS</p>
+              <p className="text-[10px] text-govt-gold/80 font-mono">password: demo123</p>
+            </div>
+            <div className="max-h-[280px] overflow-y-auto pr-1 space-y-2.5 [&::-webkit-scrollbar]:w-1 [&::-webkit-scrollbar-thumb]:bg-primary-foreground/20 [&::-webkit-scrollbar-thumb]:rounded">
+              {DEMO_GROUPS.map(group => (
+                <div key={group.section}>
+                  <p className="text-[9px] text-govt-gold/70 font-semibold tracking-wider mb-1">{group.section}</p>
+                  <div className="space-y-0.5">
+                    {group.accounts.map(acc => (
+                      <button
+                        key={acc.email}
+                        type="button"
+                        onClick={() => setEmail(acc.email)}
+                        className="w-full grid grid-cols-[1fr_auto] gap-2 items-center px-1.5 py-0.5 rounded hover:bg-primary-foreground/10 text-left transition-colors"
+                        title="Click to fill email"
+                      >
+                        <span className="text-[10px] text-primary-foreground/70 font-mono truncate">{acc.email}</span>
+                        <span className="text-[9px] text-primary-foreground/45 whitespace-nowrap">{acc.role}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
         </div>
