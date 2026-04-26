@@ -85,7 +85,47 @@ export interface Party {
   name: string;
   type: string;
   department?: string;
+  isInternalDept?: boolean;
   remarks?: string;
+}
+
+export interface CaseDoc {
+  id: string;
+  name: string;
+  stage: string; // Filed | Interim | Counter | Compliance / Action Taken | Judgment | Miscellaneous
+  uploadedBy: string;
+  uploadedAt: string;
+  size?: string;
+}
+
+export interface DirectionRecord {
+  id: string;
+  text: string;
+  issuedBy: string;
+  issuedAt: string;
+  concernedOfficer: string;
+  concernedDepartment: string;
+  dueDate: string;
+  priority: "High" | "Medium" | "Low";
+  status: "Pending" | "In Progress" | "Completed";
+}
+
+export interface ActionTakenRecord {
+  id: string;
+  summary: string;
+  doc?: { name: string; size?: string } | null;
+  uploadedBy: string;
+  uploadedAt: string;
+  linkedDirectionId?: string;
+}
+
+export interface AuditEntry {
+  id: string;
+  ts: string;
+  actor: string;
+  role: string;
+  action: string;
+  details?: string;
 }
 
 export interface CaseRecord {
@@ -135,6 +175,29 @@ export interface CaseRecord {
   interimOrderStatus: string;
   finalJudgmentStatus: string;
   finalActionStatus: string;
+  // Government workflow alignment (additive)
+  slNo?: number;
+  caseYear?: string;
+  instructionsFiled?: "Yes" | "No" | "Pending";
+  counterFiled?: "Yes" | "No" | "Pending";
+  srNumber?: string;
+  approvedCounterDoc?: { name: string; uploadedBy: string; uploadedAt: string } | null;
+  disposed?: "Yes" | "No";
+  disposalDate?: string;
+  disposalSummary?: string;
+  judgmentDoc?: { name: string; uploadedBy: string; uploadedAt: string } | null;
+  directions?: DirectionRecord[];
+  actionsTaken?: ActionTakenRecord[];
+  closed?: boolean;
+  closedBy?: string;
+  closedAt?: string;
+  auditTrail?: AuditEntry[];
+}
+
+export function caseNoYear(c: Pick<CaseRecord, "caseNumber" | "caseYear" | "filingYear">): string {
+  const yr = c.caseYear || c.filingYear || "";
+  if (!yr) return c.caseNumber;
+  return c.caseNumber.includes("/") ? c.caseNumber : `${c.caseNumber}/${yr}`;
 }
 
 function getDivision(mandal: string): string {
@@ -142,6 +205,8 @@ function getDivision(mandal: string): string {
   if (divisions["Choutuppal Division"].includes(mandal)) return "Choutuppal Division";
   return "";
 }
+
+let _slCounter = 0;
 
 function makeCase(
   base: Omit<CaseRecord, "petitioners" | "respondents" | "coRespondentParties" | "division" | "counterDraftStatus" | "gpApprovalStatus" | "collectorApprovalStatus" | "counterFilingDueDate" | "pendingAtLevel" | "interimOrderStatus" | "finalJudgmentStatus" | "finalActionStatus">,
@@ -157,23 +222,47 @@ function makeCase(
       autoCounterDueDate = nh.toISOString().split("T")[0];
     }
   }
+  _slCounter += 1;
+  const isClosed = base.status === "Closed";
+  const isCounterDone = isClosed;
   return {
     ...base,
     division: getDivision(base.mandal),
     petitioners: [{ name: base.petitioner, type: "Individual", department: "", remarks: "" }],
-    respondents: [{ name: base.respondent, type: "Government", department: base.department, remarks: "" }],
-    coRespondentParties: base.coRespondents.map(cr => ({ name: cr, type: "Government", department: "", remarks: "" })),
-    counterDraftStatus: base.status === "Counter Pending" ? "Pending" : base.status === "Closed" ? "Filed" : "Not Started",
+    respondents: [{ name: base.respondent, type: "Government", department: base.department, isInternalDept: true, remarks: "" }],
+    coRespondentParties: base.coRespondents.map(cr => ({ name: cr, type: "Government", department: "", isInternalDept: false, remarks: "" })),
+    counterDraftStatus: base.status === "Counter Pending" ? "Pending" : isClosed ? "Filed" : "Not Started",
     gpApprovalStatus: "Not Applicable",
     collectorApprovalStatus: "Not Applicable",
     counterFilingDueDate: autoCounterDueDate,
-    pendingAtLevel: base.status === "Counter Pending" ? "Counter Filing" : base.complianceRequired && base.complianceStatus === "Pending" ? "Compliance" : base.status === "Closed" ? "Closed" : "Hearing Update",
+    pendingAtLevel: base.status === "Counter Pending" ? "Counter Filing" : base.complianceRequired && base.complianceStatus === "Pending" ? "Compliance" : isClosed ? "Closed" : "Hearing Update",
     interimOrderStatus: base.orderPassed ? "Received" : "Not Applicable",
-    finalJudgmentStatus: base.status === "Closed" ? "Received" : "Pending",
-    finalActionStatus: base.status === "Closed" ? "Completed" : "In Progress",
+    finalJudgmentStatus: isClosed ? "Received" : "Pending",
+    finalActionStatus: isClosed ? "Completed" : "In Progress",
+    // Workflow defaults
+    slNo: _slCounter,
+    caseYear: base.filingYear,
+    instructionsFiled: isCounterDone ? "Yes" : base.status === "Counter Pending" ? "Pending" : base.status === "Fresh" ? "Pending" : "Yes",
+    counterFiled: isCounterDone ? "Yes" : base.status === "Counter Pending" ? "No" : base.status === "Fresh" ? "No" : "Yes",
+    srNumber: isCounterDone ? `SR/${1000 + _slCounter}/${base.filingYear || "2024"}` : "",
+    approvedCounterDoc: isCounterDone ? { name: `Approved_Counter_${base.caseNumber.replace(/[^A-Za-z0-9]/g, "_")}.pdf`, uploadedBy: "District Legal Officer", uploadedAt: base.lastUpdated } : null,
+    disposed: isClosed ? "Yes" : "No",
+    disposalDate: isClosed ? base.lastHearing && base.lastHearing !== "-" ? base.lastHearing : base.lastUpdated : "",
+    disposalSummary: isClosed ? base.orderSummary || "Case disposed by court order." : "",
+    judgmentDoc: isClosed ? { name: `Judgment_${base.caseNumber.replace(/[^A-Za-z0-9]/g, "_")}.pdf`, uploadedBy: "HC Liaison", uploadedAt: base.lastUpdated } : null,
+    directions: [],
+    actionsTaken: [],
+    closed: isClosed && base.complianceStatus === "Complied",
+    closedBy: isClosed && base.complianceStatus === "Complied" ? "District Collector" : "",
+    closedAt: isClosed && base.complianceStatus === "Complied" ? base.lastUpdated : "",
+    auditTrail: [{
+      id: `AUD-${_slCounter}-1`, ts: base.filingDate, actor: "System", role: "Admin",
+      action: "Case Registered", details: `${base.caseNumber} created`,
+    }],
     ...extra,
   };
 }
+
 
 export const cases: CaseRecord[] = [
   makeCase({

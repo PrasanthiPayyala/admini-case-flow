@@ -1,7 +1,7 @@
 import { AppLayout } from "@/components/layout/AppLayout";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { StatusBadge } from "@/components/shared/StatusBadge";
-import { caseTypes, mandals, departments, courtNames, priorities, collectorateInvolvementTypes, HC_STATUS_URL, divisions, pendingAtLevels } from "@/data/sampleData";
+import { caseTypes, mandals, departments, courtNames, priorities, collectorateInvolvementTypes, HC_STATUS_URL, divisions, pendingAtLevels, caseNoYear } from "@/data/sampleData";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -13,7 +13,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { useAuth } from "@/contexts/AuthContext";
 import { useRoleFilter } from "@/hooks/useRoleFilter";
 import { useState, useEffect, useMemo } from "react";
-import type { Party } from "@/data/sampleData";
+import type { Party, CaseRecord } from "@/data/sampleData";
 
 const STATUSES = ["Fresh","Ongoing","Hearing Scheduled","Counter Pending","Under Review","Appealed","Closed"];
 const DIVISION_NAMES = Object.keys(divisions);
@@ -85,6 +85,10 @@ export default function CaseList() {
   const [landF, setLandF] = useState("all");
   const [divisionF, setDivisionF] = useState("all");
   const [pendingAtF, setPendingAtF] = useState("all");
+  const [instructionsF, setInstructionsF] = useState("all");
+  const [counterF, setCounterF] = useState("all");
+  const [disposedF, setDisposedF] = useState("all");
+  const [closedF, setClosedF] = useState("all");
   const [page, setPage] = useState(1);
 
   useEffect(() => {
@@ -96,7 +100,10 @@ export default function CaseList() {
     const gp = searchParams.get("gpApproval");
     const ca = searchParams.get("collectorApproval");
     const comp = searchParams.get("compliance");
-    const lp = searchParams.get("longPending");
+    const ins = searchParams.get("instructions");
+    const cnt = searchParams.get("counter");
+    const dis = searchParams.get("disposed");
+    const cls = searchParams.get("closed");
     if (s && STATUSES.includes(s)) setStatusF(s);
     if (inv) setCollectF(inv);
     if (land === "true") setLandF("yes");
@@ -105,12 +112,16 @@ export default function CaseList() {
     if (gp === "Pending") setPendingAtF("GP Approval");
     if (ca === "Pending") setPendingAtF("Collector Approval");
     if (comp === "pending") setComplianceF("pending");
+    if (ins) setInstructionsF(ins);
+    if (cnt) setCounterF(cnt);
+    if (dis) setDisposedF(dis);
+    if (cls) setClosedF(cls);
   }, [searchParams]);
 
   const filtered = useMemo(() => cases.filter(c => {
     if (search) {
       const s = search.toLowerCase();
-      if (!c.caseNumber.toLowerCase().includes(s) && !c.title.toLowerCase().includes(s) && !c.petitioner.toLowerCase().includes(s) && !c.respondent.toLowerCase().includes(s)) return false;
+      if (!c.caseNumber.toLowerCase().includes(s) && !c.title.toLowerCase().includes(s) && !c.petitioner.toLowerCase().includes(s) && !c.respondent.toLowerCase().includes(s) && !(c.srNumber || "").toLowerCase().includes(s)) return false;
     }
     if (statusF !== "all" && c.status !== statusF) return false;
     if (typeF !== "all" && c.caseType !== typeF) return false;
@@ -128,8 +139,14 @@ export default function CaseList() {
       if (complianceF === "complied" && c.complianceStatus !== "Complied") return false;
       if (complianceF === "na" && c.complianceStatus !== "Not Applicable") return false;
     }
+    if (instructionsF !== "all" && (c.instructionsFiled || "Pending") !== instructionsF) return false;
+    if (counterF !== "all" && (c.counterFiled || "No") !== counterF) return false;
+    if (disposedF !== "all" && (c.disposed || "No") !== disposedF) return false;
+    if (closedF === "yes" && !c.closed) return false;
+    if (closedF === "no" && c.closed) return false;
+    if (closedF === "disposed_not_closed" && (c.disposed !== "Yes" || c.closed)) return false;
     return true;
-  }), [cases, search, statusF, typeF, courtF, mandalF, deptF, priorityF, collectF, complianceF, landF, divisionF, pendingAtF]);
+  }), [cases, search, statusF, typeF, courtF, mandalF, deptF, priorityF, collectF, complianceF, landF, divisionF, pendingAtF, instructionsF, counterF, disposedF, closedF]);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const paged = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
@@ -137,10 +154,30 @@ export default function CaseList() {
   const clearFilters = () => {
     setSearch(""); setStatusF("all"); setTypeF("all"); setCourtF("all"); setMandalF("all");
     setDeptF("all"); setPriorityF("all"); setCollectF("all"); setComplianceF("all"); setLandF("all");
-    setDivisionF("all"); setPendingAtF("all"); setPage(1);
+    setDivisionF("all"); setPendingAtF("all"); setInstructionsF("all"); setCounterF("all");
+    setDisposedF("all"); setClosedF("all"); setPage(1);
   };
 
-  const hasFilters = statusF !== "all" || typeF !== "all" || courtF !== "all" || mandalF !== "all" || deptF !== "all" || priorityF !== "all" || collectF !== "all" || complianceF !== "all" || landF !== "all" || divisionF !== "all" || pendingAtF !== "all" || search;
+  const hasFilters = statusF !== "all" || typeF !== "all" || courtF !== "all" || mandalF !== "all" || deptF !== "all" || priorityF !== "all" || collectF !== "all" || complianceF !== "all" || landF !== "all" || divisionF !== "all" || pendingAtF !== "all" || instructionsF !== "all" || counterF !== "all" || disposedF !== "all" || closedF !== "all" || search;
+
+  const exportCsv = () => {
+    const headers = ["Sl.No","Department","Case Type","Case No./Year","Title","Petitioner","Respondent","Instructions Filed","Counter Filed","S.R. Number","Next Hearing","Disposed","Compliance","Pending At","Officer","Last Updated"];
+    const rows = filtered.map((c, i) => [
+      c.slNo ?? i + 1, c.department, c.caseType, caseNoYear(c), c.title,
+      c.petitioners?.[0]?.name || c.petitioner, c.respondents?.[0]?.name || c.respondent,
+      c.instructionsFiled || "Pending", c.counterFiled || "No", c.srNumber || "",
+      c.nextHearing, c.disposed || "No", c.complianceStatus, c.pendingAtLevel,
+      c.assignedOfficer, c.lastUpdated,
+    ]);
+    const csv = [headers, ...rows].map(r => r.map(v => `"${String(v ?? "").replace(/"/g, '""')}"`).join(",")).join("\n");
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url; a.download = `lcms-cases-${new Date().toISOString().slice(0,10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
 
   return (
     <AppLayout>
@@ -150,7 +187,7 @@ export default function CaseList() {
         actions={
           <>
             {scopeLabel !== "District-wide" && <Badge variant="secondary" className="text-[10px]">{scopeLabel}</Badge>}
-            <Button variant="outline" size="sm"><Download className="h-3.5 w-3.5 mr-1.5" />Export</Button>
+            <Button variant="outline" size="sm" onClick={exportCsv}><Download className="h-3.5 w-3.5 mr-1.5" />Export CSV</Button>
             {permissions?.canBulkUpload && <Link to="/cases/bulk-upload"><Button variant="outline" size="sm"><Upload className="h-3.5 w-3.5 mr-1.5" />Bulk Upload</Button></Link>}
             {permissions?.canCreateCase && <Link to="/cases/new"><Button size="sm"><Plus className="h-3.5 w-3.5 mr-1.5" />Add Case</Button></Link>}
           </>
@@ -194,6 +231,18 @@ export default function CaseList() {
           <Select value={complianceF} onValueChange={v => { setComplianceF(v); setPage(1); }}><SelectTrigger className="w-[120px] h-8 text-xs"><SelectValue placeholder="Compliance" /></SelectTrigger>
             <SelectContent><SelectItem value="all">All</SelectItem><SelectItem value="pending">Pending</SelectItem><SelectItem value="partial">Partial</SelectItem><SelectItem value="complied">Complied</SelectItem><SelectItem value="na">N/A</SelectItem></SelectContent>
           </Select>
+          <Select value={instructionsF} onValueChange={v => { setInstructionsF(v); setPage(1); }}><SelectTrigger className="w-[130px] h-8 text-xs"><SelectValue placeholder="Instructions" /></SelectTrigger>
+            <SelectContent><SelectItem value="all">All Instr.</SelectItem><SelectItem value="Yes">Filed</SelectItem><SelectItem value="No">Not Filed</SelectItem><SelectItem value="Pending">Pending</SelectItem></SelectContent>
+          </Select>
+          <Select value={counterF} onValueChange={v => { setCounterF(v); setPage(1); }}><SelectTrigger className="w-[120px] h-8 text-xs"><SelectValue placeholder="Counter" /></SelectTrigger>
+            <SelectContent><SelectItem value="all">All Counter</SelectItem><SelectItem value="Yes">Filed</SelectItem><SelectItem value="No">Not Filed</SelectItem><SelectItem value="Pending">Pending</SelectItem></SelectContent>
+          </Select>
+          <Select value={disposedF} onValueChange={v => { setDisposedF(v); setPage(1); }}><SelectTrigger className="w-[120px] h-8 text-xs"><SelectValue placeholder="Disposed" /></SelectTrigger>
+            <SelectContent><SelectItem value="all">All</SelectItem><SelectItem value="Yes">Disposed</SelectItem><SelectItem value="No">Not Disposed</SelectItem></SelectContent>
+          </Select>
+          <Select value={closedF} onValueChange={v => { setClosedF(v); setPage(1); }}><SelectTrigger className="w-[150px] h-8 text-xs"><SelectValue placeholder="Closed" /></SelectTrigger>
+            <SelectContent><SelectItem value="all">All Files</SelectItem><SelectItem value="yes">Closed</SelectItem><SelectItem value="no">Open</SelectItem><SelectItem value="disposed_not_closed">Disposed, Not Closed</SelectItem></SelectContent>
+          </Select>
           {hasFilters && <Button variant="ghost" size="sm" className="h-8 text-xs text-muted-foreground" onClick={clearFilters}>Clear</Button>}
         </div>
         {hasFilters && <p className="text-[10px] text-muted-foreground mt-2">Showing {filtered.length} of {cases.length} cases</p>}
@@ -201,52 +250,65 @@ export default function CaseList() {
 
       <div className="govt-card overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="w-full govt-table">
+          <table className="w-full govt-table text-[11px]">
             <thead>
               <tr>
-                <th>Case No.</th>
+                <th className="w-10">Sl.</th>
+                <th>Dept</th>
+                <th>Type</th>
+                <th>Case No./Year</th>
                 <th>Title</th>
                 <th>Petitioner</th>
                 <th>Respondent</th>
-                <th>Type</th>
-                <th>Court</th>
-                <th>Division</th>
-                <th>Mandal</th>
-                <th>Dept</th>
-                <th>Priority</th>
-                <th>Status</th>
-                <th>Hearing</th>
+                <th>Instr.</th>
                 <th>Counter</th>
+                <th>S.R. No.</th>
+                <th>Next Hearing</th>
+                <th>→ Hearing</th>
+                <th>→ Counter</th>
+                <th>Disposed</th>
+                <th>Action Status</th>
                 <th>Pending At</th>
-                <th>Compliance</th>
                 <th>Officer</th>
+                <th>Updated</th>
                 <th className="w-12">Actions</th>
               </tr>
             </thead>
             <tbody>
-              {paged.map(c => {
+              {paged.map((c, idx) => {
                 const hearingDays = getDaysLeft(c.nextHearing);
                 const counterDays = getDaysLeft(c.counterFilingDueDate);
+                const slNo = c.slNo ?? ((page - 1) * PAGE_SIZE + idx + 1);
+                const openDirs = (c.directions || []).filter(d => d.status !== "Completed").length;
+                const actionStatus = c.closed ? "Closed" : c.disposed === "Yes" ? "Disposed, Open" : openDirs > 0 ? `${openDirs} Direction(s) Open` : c.complianceStatus === "Pending" ? "Compliance Pending" : c.complianceStatus === "Partially Complied" ? "Partial" : "On Track";
                 return (
                   <tr key={c.id}>
+                    <td className="text-center text-muted-foreground">{slNo}</td>
+                    <td className="max-w-[100px] truncate" title={c.department}>{c.department}</td>
+                    <td className="whitespace-nowrap">{c.caseType}</td>
                     <td className="font-medium text-foreground whitespace-nowrap">
-                      <Link to={`/cases/${encodeURIComponent(c.id)}`} className="hover:text-primary hover:underline">{c.caseNumber}</Link>
+                      <Link to={`/cases/${encodeURIComponent(c.id)}`} className="hover:text-primary hover:underline">{caseNoYear(c)}</Link>
                     </td>
-                    <td className="max-w-[130px] truncate">{c.title}</td>
+                    <td className="max-w-[140px] truncate" title={c.title}>{c.title}</td>
                     <td className="whitespace-nowrap"><PartyCell parties={c.petitioners} /></td>
                     <td className="whitespace-nowrap"><PartyCell parties={c.respondents} /></td>
-                    <td className="whitespace-nowrap">{c.caseType}</td>
-                    <td className="max-w-[100px] truncate">{c.court}</td>
-                    <td className="whitespace-nowrap text-[11px]">{c.division?.replace(" Division", "")}</td>
-                    <td className="whitespace-nowrap">{c.mandal}</td>
-                    <td className="max-w-[90px] truncate">{c.department}</td>
-                    <td><StatusBadge value={c.priority} type="priority" size="sm" /></td>
-                    <td><StatusBadge value={c.status} size="sm" /></td>
-                    <td className={`whitespace-nowrap text-xs ${hearingDays.className}`}>{hearingDays.label}</td>
-                    <td className={`whitespace-nowrap text-xs ${counterDays.className}`}>{counterDays.label}</td>
+                    <td><StatusBadge value={c.instructionsFiled || "Pending"} size="sm" /></td>
+                    <td><StatusBadge value={c.counterFiled || "No"} size="sm" /></td>
+                    <td className="text-[10px] whitespace-nowrap">{c.srNumber || "—"}</td>
+                    <td className="whitespace-nowrap text-[10px]">{c.nextHearing && c.nextHearing !== "-" ? c.nextHearing : "—"}</td>
+                    <td className={`whitespace-nowrap ${hearingDays.className}`}>{hearingDays.label}</td>
+                    <td className={`whitespace-nowrap ${counterDays.className}`}>{counterDays.label}</td>
+                    <td>
+                      {c.closed
+                        ? <Badge className="text-[9px] px-1 py-0 h-4 bg-muted text-muted-foreground">Closed</Badge>
+                        : c.disposed === "Yes"
+                          ? <Badge className="text-[9px] px-1 py-0 h-4 bg-emerald-100 text-emerald-800 border-emerald-300">Yes</Badge>
+                          : <span className="text-muted-foreground text-[10px]">No</span>}
+                    </td>
+                    <td className="text-[10px] whitespace-nowrap">{actionStatus}</td>
                     <td><StatusBadge value={c.pendingAtLevel} size="sm" /></td>
-                    <td><StatusBadge value={c.complianceStatus} size="sm" /></td>
-                    <td className="text-[10px] max-w-[80px] truncate">{c.assignedOfficer}</td>
+                    <td className="text-[10px] max-w-[80px] truncate" title={c.assignedOfficer}>{c.assignedOfficer}</td>
+                    <td className="text-[10px] whitespace-nowrap text-muted-foreground">{c.lastUpdated}</td>
                     <td>
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
@@ -264,7 +326,7 @@ export default function CaseList() {
                   </tr>
                 );
               })}
-              {paged.length === 0 && <tr><td colSpan={17} className="text-center py-6 text-muted-foreground text-xs">No cases found matching your filters</td></tr>}
+              {paged.length === 0 && <tr><td colSpan={20} className="text-center py-6 text-muted-foreground text-xs">No cases found matching your filters</td></tr>}
             </tbody>
           </table>
         </div>
