@@ -64,7 +64,7 @@ const AUDIT_KEY = "lcms_audit";
 // Backfill any legacy/seed records missing the new workflow fields.
 function normaliseCase(c: CaseRecord, idx: number): CaseRecord {
   const isClosed = c.status === "Closed";
-  return {
+  const defaults: Partial<CaseRecord> = {
     slNo: idx + 1,
     caseYear: c.filingYear,
     instructionsFiled: isClosed ? "Yes" : c.status === "Fresh" ? "Pending" : "Yes",
@@ -81,9 +81,8 @@ function normaliseCase(c: CaseRecord, idx: number): CaseRecord {
     closedBy: "",
     closedAt: "",
     auditTrail: [],
-    ...c,
-    slNo: c.slNo ?? idx + 1, // ensure slNo present
   };
+  return { ...defaults, ...c, slNo: c.slNo ?? idx + 1 };
 }
 
 function load<T>(key: string, seed: T[]): T[] {
