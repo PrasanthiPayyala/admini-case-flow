@@ -49,8 +49,14 @@ export default function CourtLiaisonUpdates() {
     if (form.nextDate) caseUpdates.nextHearing = form.nextDate;
     if (form.orderPassed) { caseUpdates.orderPassed = true; caseUpdates.orderSummary = form.orderSummary; }
     if (form.complianceRequired) { caseUpdates.complianceRequired = true; caseUpdates.complianceStatus = form.complianceStatus; caseUpdates.complianceDueDate = form.complianceDueDate; }
-    if (form.outcome === "Disposed" || form.outcome === "Dismissed") caseUpdates.status = "Closed";
-    else if (form.outcome) caseUpdates.status = "Ongoing";
+    if (form.outcome === "Disposed" || form.outcome === "Dismissed") {
+      caseUpdates.status = "Closed";
+      // Auto disposal prompt — mark disposed in workflow data
+      markDisposed(linkedCase.id, { disposalDate: selected.date, disposalSummary: form.orderSummary || form.remarks || `${form.outcome} at ${selected.court}` }, "HC Liaison Officer", "High Court Representative Officer");
+      toast({ title: `Case ${form.outcome}`, description: "Case marked as disposed in workflow. File can be closed once directions are completed." });
+    } else if (form.outcome) {
+      caseUpdates.status = "Ongoing";
+    }
     updateCase(linkedCase.id, caseUpdates);
     toast({ title: "Hearing updated", description: `${linkedCase.caseNumber} updated successfully.` });
     setSelectedId(null);
