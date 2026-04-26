@@ -204,7 +204,7 @@ export default function Dashboard() {
           <StatsCard title="Instructions Pending" value={instructionsPending.length} icon={FileText} subtitle="Awaiting dept input" href="/cases?instructions=Pending" accent="urgent" />
           <StatsCard title="S.R. Number Pending" value={srNumberPending.length} icon={ClipboardList} subtitle="Counter filed, no SR" href="/cases?sr=missing" accent="warning" />
           <StatsCard title="Action Taken Pending" value={directionsPending.length} icon={AlertTriangle} subtitle="Directions open" href="/cases?directions=Pending" accent="urgent" />
-          <StatsCard title="Pending Closures" value={closurePending.length} icon={Lock} subtitle="Disposed not closed" href="/cases?closure=Pending" accent="info" />
+          <StatsCard title="Pending Closures" value={closurePending.length} icon={LockIcon} subtitle="Disposed not closed" href="/cases?closure=Pending" accent="info" />
         </div>
       )}
 
