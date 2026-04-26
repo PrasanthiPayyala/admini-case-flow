@@ -85,6 +85,10 @@ export default function CaseList() {
   const [landF, setLandF] = useState("all");
   const [divisionF, setDivisionF] = useState("all");
   const [pendingAtF, setPendingAtF] = useState("all");
+  const [instructionsF, setInstructionsF] = useState("all");
+  const [counterF, setCounterF] = useState("all");
+  const [disposedF, setDisposedF] = useState("all");
+  const [closedF, setClosedF] = useState("all");
   const [page, setPage] = useState(1);
 
   useEffect(() => {
@@ -96,7 +100,10 @@ export default function CaseList() {
     const gp = searchParams.get("gpApproval");
     const ca = searchParams.get("collectorApproval");
     const comp = searchParams.get("compliance");
-    const lp = searchParams.get("longPending");
+    const ins = searchParams.get("instructions");
+    const cnt = searchParams.get("counter");
+    const dis = searchParams.get("disposed");
+    const cls = searchParams.get("closed");
     if (s && STATUSES.includes(s)) setStatusF(s);
     if (inv) setCollectF(inv);
     if (land === "true") setLandF("yes");
@@ -105,12 +112,16 @@ export default function CaseList() {
     if (gp === "Pending") setPendingAtF("GP Approval");
     if (ca === "Pending") setPendingAtF("Collector Approval");
     if (comp === "pending") setComplianceF("pending");
+    if (ins) setInstructionsF(ins);
+    if (cnt) setCounterF(cnt);
+    if (dis) setDisposedF(dis);
+    if (cls) setClosedF(cls);
   }, [searchParams]);
 
   const filtered = useMemo(() => cases.filter(c => {
     if (search) {
       const s = search.toLowerCase();
-      if (!c.caseNumber.toLowerCase().includes(s) && !c.title.toLowerCase().includes(s) && !c.petitioner.toLowerCase().includes(s) && !c.respondent.toLowerCase().includes(s)) return false;
+      if (!c.caseNumber.toLowerCase().includes(s) && !c.title.toLowerCase().includes(s) && !c.petitioner.toLowerCase().includes(s) && !c.respondent.toLowerCase().includes(s) && !(c.srNumber || "").toLowerCase().includes(s)) return false;
     }
     if (statusF !== "all" && c.status !== statusF) return false;
     if (typeF !== "all" && c.caseType !== typeF) return false;
@@ -128,8 +139,14 @@ export default function CaseList() {
       if (complianceF === "complied" && c.complianceStatus !== "Complied") return false;
       if (complianceF === "na" && c.complianceStatus !== "Not Applicable") return false;
     }
+    if (instructionsF !== "all" && (c.instructionsFiled || "Pending") !== instructionsF) return false;
+    if (counterF !== "all" && (c.counterFiled || "No") !== counterF) return false;
+    if (disposedF !== "all" && (c.disposed || "No") !== disposedF) return false;
+    if (closedF === "yes" && !c.closed) return false;
+    if (closedF === "no" && c.closed) return false;
+    if (closedF === "disposed_not_closed" && (c.disposed !== "Yes" || c.closed)) return false;
     return true;
-  }), [cases, search, statusF, typeF, courtF, mandalF, deptF, priorityF, collectF, complianceF, landF, divisionF, pendingAtF]);
+  }), [cases, search, statusF, typeF, courtF, mandalF, deptF, priorityF, collectF, complianceF, landF, divisionF, pendingAtF, instructionsF, counterF, disposedF, closedF]);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const paged = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
@@ -137,10 +154,30 @@ export default function CaseList() {
   const clearFilters = () => {
     setSearch(""); setStatusF("all"); setTypeF("all"); setCourtF("all"); setMandalF("all");
     setDeptF("all"); setPriorityF("all"); setCollectF("all"); setComplianceF("all"); setLandF("all");
-    setDivisionF("all"); setPendingAtF("all"); setPage(1);
+    setDivisionF("all"); setPendingAtF("all"); setInstructionsF("all"); setCounterF("all");
+    setDisposedF("all"); setClosedF("all"); setPage(1);
   };
 
-  const hasFilters = statusF !== "all" || typeF !== "all" || courtF !== "all" || mandalF !== "all" || deptF !== "all" || priorityF !== "all" || collectF !== "all" || complianceF !== "all" || landF !== "all" || divisionF !== "all" || pendingAtF !== "all" || search;
+  const hasFilters = statusF !== "all" || typeF !== "all" || courtF !== "all" || mandalF !== "all" || deptF !== "all" || priorityF !== "all" || collectF !== "all" || complianceF !== "all" || landF !== "all" || divisionF !== "all" || pendingAtF !== "all" || instructionsF !== "all" || counterF !== "all" || disposedF !== "all" || closedF !== "all" || search;
+
+  const exportCsv = () => {
+    const headers = ["Sl.No","Department","Case Type","Case No./Year","Title","Petitioner","Respondent","Instructions Filed","Counter Filed","S.R. Number","Next Hearing","Disposed","Compliance","Pending At","Officer","Last Updated"];
+    const rows = filtered.map((c, i) => [
+      c.slNo ?? i + 1, c.department, c.caseType, caseNoYear(c), c.title,
+      c.petitioners?.[0]?.name || c.petitioner, c.respondents?.[0]?.name || c.respondent,
+      c.instructionsFiled || "Pending", c.counterFiled || "No", c.srNumber || "",
+      c.nextHearing, c.disposed || "No", c.complianceStatus, c.pendingAtLevel,
+      c.assignedOfficer, c.lastUpdated,
+    ]);
+    const csv = [headers, ...rows].map(r => r.map(v => `"${String(v ?? "").replace(/"/g, '""')}"`).join(",")).join("\n");
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url; a.download = `lcms-cases-${new Date().toISOString().slice(0,10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
 
   return (
     <AppLayout>
