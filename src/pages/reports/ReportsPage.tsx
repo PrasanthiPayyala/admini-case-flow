@@ -2,26 +2,31 @@ import { AppLayout } from "@/components/layout/AppLayout";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { FileText, FileSpreadsheet } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from "recharts";
 import { caseTypes, mandals, departments, priorities } from "@/data/sampleData";
-import { useData } from "@/contexts/DataContext";
+import { useRoleFilter } from "@/hooks/useRoleFilter";
 import { useState } from "react";
+import { toast } from "@/hooks/use-toast";
 
 export default function ReportsPage() {
-  const { cases } = useData();
+  const { filteredCases, scopeLabel } = useRoleFilter();
   const [typeF, setTypeF] = useState("all");
   const [mandalF, setMandalF] = useState("all");
   const [deptF, setDeptF] = useState("all");
   const [priorityF, setPriorityF] = useState("all");
+  const [workflowF, setWorkflowF] = useState("all");
 
-  const filtered = cases.filter(c => {
+  const filtered = filteredCases.filter(c => {
     if (typeF !== "all" && c.caseType !== typeF) return false;
     if (mandalF !== "all" && c.mandal !== mandalF) return false;
     if (deptF !== "all" && c.department !== deptF) return false;
     if (priorityF !== "all" && c.priority !== priorityF) return false;
+    if (workflowF === "instructions_pending" && c.instructionsFiled !== "Pending") return false;
+    if (workflowF === "counter_pending" && c.counterFiled === "Yes") return false;
+    if (workflowF === "sr_pending" && (c.counterFiled !== "Yes" || c.srNumber)) return false;
+    if (workflowF === "disposed_open" && !(c.disposed === "Yes" && !c.closed)) return false;
+    if (workflowF === "closed" && !c.closed) return false;
     return true;
   });
 
@@ -33,10 +38,70 @@ export default function ReportsPage() {
   const complianceReport = (() => { const m: Record<string, number> = { "Complied": 0, "Pending": 0, "Partially Complied": 0, "Not Applicable": 0 }; filtered.forEach(c => { m[c.complianceStatus] = (m[c.complianceStatus] || 0) + 1; }); return Object.entries(m).map(([status, count]) => ({ status, count })); })();
   const last7Days = filtered.filter(c => (Date.now() - new Date(c.lastUpdated).getTime()) / (1000*60*60*24) <= 7);
 
+  // Workflow KPI summary using new fields
+  const workflowSummary = {
+    instructionsPending: filtered.filter(c => c.instructionsFiled === "Pending").length,
+    counterPending: filtered.filter(c => c.counterFiled !== "Yes" && c.status !== "Closed").length,
+    srPending: filtered.filter(c => c.counterFiled === "Yes" && !c.srNumber).length,
+    disposed: filtered.filter(c => c.disposed === "Yes").length,
+    pendingClosure: filtered.filter(c => c.disposed === "Yes" && !c.closed).length,
+    closed: filtered.filter(c => c.closed).length,
+    openDirections: filtered.reduce((sum, c) => sum + (c.directions || []).filter(d => d.status !== "Completed").length, 0),
+  };
+
+  const exportCSV = () => {
+    const headers = ["Sl.No", "Case Number", "Title", "Court", "Case Type", "Department", "Mandal", "Status", "Pending At", "Instructions Filed", "Counter Filed", "S.R. Number", "Disposed", "Disposal Date", "Closed", "Open Directions", "Compliance", "Last Updated"];
+    const rows = filtered.map(c => [
+      c.slNo ?? "",
+      c.caseNumber,
+      `"${(c.title || "").replace(/"/g, '""')}"`,
+      `"${c.court}"`,
+      c.caseType,
+      `"${c.department}"`,
+      c.mandal,
+      c.status,
+      c.pendingAtLevel,
+      c.instructionsFiled || "",
+      c.counterFiled || "",
+      c.srNumber || "",
+      c.disposed || "",
+      c.disposalDate || "",
+      c.closed ? "Yes" : "No",
+      (c.directions || []).filter(d => d.status !== "Completed").length,
+      c.complianceStatus,
+      c.lastUpdated,
+    ].join(","));
+    const csv = [headers.join(","), ...rows].join("\n");
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `LCMS_Report_${scopeLabel.replace(/\s+/g, "_")}_${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+    toast({ title: "Excel/CSV Exported", description: `${filtered.length} cases exported (${scopeLabel}).` });
+  };
+
+  const exportPDF = () => {
+    toast({ title: "Preparing PDF", description: "Use the print dialog → Save as PDF." });
+    setTimeout(() => window.print(), 300);
+  };
+
   return (
     <AppLayout>
-      <PageHeader title="Reports & Analytics" breadcrumbs={[{ label: "Home", href: "/" }, { label: "Reports" }]}
-        actions={<div className="flex gap-2"><Button variant="outline" size="sm"><FileText className="h-3.5 w-3.5 mr-1.5" />Export PDF</Button><Button variant="outline" size="sm"><FileSpreadsheet className="h-3.5 w-3.5 mr-1.5" />Export Excel</Button></div>} />
+      <PageHeader
+        title="Reports & Analytics"
+        breadcrumbs={[{ label: "Home", href: "/" }, { label: "Reports" }]}
+        actions={<div className="flex gap-2"><Button variant="outline" size="sm" onClick={exportPDF}><FileText className="h-3.5 w-3.5 mr-1.5" />Export PDF</Button><Button variant="outline" size="sm" onClick={exportCSV}><FileSpreadsheet className="h-3.5 w-3.5 mr-1.5" />Export Excel</Button></div>}
+      />
+
+      <div className="govt-card p-3 mb-3">
+        <div className="flex items-center justify-between">
+          <div className="text-xs text-muted-foreground">
+            Scope: <span className="font-semibold text-foreground">{scopeLabel}</span> · Showing <span className="font-semibold text-foreground">{filtered.length}</span> of {filteredCases.length} accessible cases
+          </div>
+        </div>
+      </div>
 
       <div className="govt-card p-3 mb-5">
         <div className="flex flex-wrap gap-2 items-end">
@@ -44,11 +109,37 @@ export default function ReportsPage() {
           <Select value={mandalF} onValueChange={setMandalF}><SelectTrigger className="w-[120px] h-8 text-xs"><SelectValue placeholder="Mandal" /></SelectTrigger><SelectContent><SelectItem value="all">All Mandals</SelectItem>{mandals.map(m => <SelectItem key={m} value={m}>{m}</SelectItem>)}</SelectContent></Select>
           <Select value={deptF} onValueChange={setDeptF}><SelectTrigger className="w-[120px] h-8 text-xs"><SelectValue placeholder="Department" /></SelectTrigger><SelectContent><SelectItem value="all">All Depts</SelectItem>{departments.map(d => <SelectItem key={d} value={d}>{d}</SelectItem>)}</SelectContent></Select>
           <Select value={priorityF} onValueChange={setPriorityF}><SelectTrigger className="w-[120px] h-8 text-xs"><SelectValue placeholder="Priority" /></SelectTrigger><SelectContent><SelectItem value="all">All</SelectItem>{priorities.map(p => <SelectItem key={p} value={p}>{p}</SelectItem>)}</SelectContent></Select>
+          <Select value={workflowF} onValueChange={setWorkflowF}>
+            <SelectTrigger className="w-[170px] h-8 text-xs"><SelectValue placeholder="Workflow Stage" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Workflow Stages</SelectItem>
+              <SelectItem value="instructions_pending">Instructions Pending</SelectItem>
+              <SelectItem value="counter_pending">Counter Pending</SelectItem>
+              <SelectItem value="sr_pending">S.R. Number Pending</SelectItem>
+              <SelectItem value="disposed_open">Disposed (Not Closed)</SelectItem>
+              <SelectItem value="closed">Closed Files</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
       </div>
 
+      {/* Workflow KPI strip */}
+      <div className="grid grid-cols-3 md:grid-cols-7 gap-3 mb-5">
+        {[
+          { label: "Total", val: filtered.length },
+          { label: "Instructions Pend.", val: workflowSummary.instructionsPending },
+          { label: "Counter Pend.", val: workflowSummary.counterPending },
+          { label: "S.R. Pending", val: workflowSummary.srPending },
+          { label: "Disposed", val: workflowSummary.disposed },
+          { label: "Pending Closure", val: workflowSummary.pendingClosure },
+          { label: "Open Directions", val: workflowSummary.openDirections },
+        ].map(s => (
+          <div key={s.label} className="govt-card p-3 text-center"><p className="text-xl font-bold text-foreground">{s.val}</p><p className="text-[10px] text-muted-foreground">{s.label}</p></div>
+        ))}
+      </div>
+
       <div className="grid grid-cols-3 md:grid-cols-6 gap-3 mb-5">
-        {[{ label: "Total Cases", val: filtered.length }, { label: "Active", val: filtered.filter(c => c.status !== "Closed").length }, { label: "Closed", val: filtered.filter(c => c.status === "Closed").length }, { label: "Appeals", val: 4 }, { label: "Compliance Pending", val: filtered.filter(c => c.complianceStatus === "Pending").length }, { label: "Updated 7d", val: last7Days.length }].map(s => (
+        {[{ label: "Active", val: filtered.filter(c => c.status !== "Closed").length }, { label: "Closed", val: filtered.filter(c => c.status === "Closed").length }, { label: "Compliance Pending", val: filtered.filter(c => c.complianceStatus === "Pending").length }, { label: "Updated 7d", val: last7Days.length }, { label: "High Priority", val: filtered.filter(c => c.priority === "High" || c.priority === "Urgent").length }, { label: "Files Closed", val: workflowSummary.closed }].map(s => (
           <div key={s.label} className="govt-card p-3 text-center"><p className="text-xl font-bold text-foreground">{s.val}</p><p className="text-[10px] text-muted-foreground">{s.label}</p></div>
         ))}
       </div>
