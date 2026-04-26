@@ -187,7 +187,7 @@ export default function CaseList() {
         actions={
           <>
             {scopeLabel !== "District-wide" && <Badge variant="secondary" className="text-[10px]">{scopeLabel}</Badge>}
-            <Button variant="outline" size="sm"><Download className="h-3.5 w-3.5 mr-1.5" />Export</Button>
+            <Button variant="outline" size="sm" onClick={exportCsv}><Download className="h-3.5 w-3.5 mr-1.5" />Export CSV</Button>
             {permissions?.canBulkUpload && <Link to="/cases/bulk-upload"><Button variant="outline" size="sm"><Upload className="h-3.5 w-3.5 mr-1.5" />Bulk Upload</Button></Link>}
             {permissions?.canCreateCase && <Link to="/cases/new"><Button size="sm"><Plus className="h-3.5 w-3.5 mr-1.5" />Add Case</Button></Link>}
           </>
@@ -230,6 +230,18 @@ export default function CaseList() {
           </Select>
           <Select value={complianceF} onValueChange={v => { setComplianceF(v); setPage(1); }}><SelectTrigger className="w-[120px] h-8 text-xs"><SelectValue placeholder="Compliance" /></SelectTrigger>
             <SelectContent><SelectItem value="all">All</SelectItem><SelectItem value="pending">Pending</SelectItem><SelectItem value="partial">Partial</SelectItem><SelectItem value="complied">Complied</SelectItem><SelectItem value="na">N/A</SelectItem></SelectContent>
+          </Select>
+          <Select value={instructionsF} onValueChange={v => { setInstructionsF(v); setPage(1); }}><SelectTrigger className="w-[130px] h-8 text-xs"><SelectValue placeholder="Instructions" /></SelectTrigger>
+            <SelectContent><SelectItem value="all">All Instr.</SelectItem><SelectItem value="Yes">Filed</SelectItem><SelectItem value="No">Not Filed</SelectItem><SelectItem value="Pending">Pending</SelectItem></SelectContent>
+          </Select>
+          <Select value={counterF} onValueChange={v => { setCounterF(v); setPage(1); }}><SelectTrigger className="w-[120px] h-8 text-xs"><SelectValue placeholder="Counter" /></SelectTrigger>
+            <SelectContent><SelectItem value="all">All Counter</SelectItem><SelectItem value="Yes">Filed</SelectItem><SelectItem value="No">Not Filed</SelectItem><SelectItem value="Pending">Pending</SelectItem></SelectContent>
+          </Select>
+          <Select value={disposedF} onValueChange={v => { setDisposedF(v); setPage(1); }}><SelectTrigger className="w-[120px] h-8 text-xs"><SelectValue placeholder="Disposed" /></SelectTrigger>
+            <SelectContent><SelectItem value="all">All</SelectItem><SelectItem value="Yes">Disposed</SelectItem><SelectItem value="No">Not Disposed</SelectItem></SelectContent>
+          </Select>
+          <Select value={closedF} onValueChange={v => { setClosedF(v); setPage(1); }}><SelectTrigger className="w-[150px] h-8 text-xs"><SelectValue placeholder="Closed" /></SelectTrigger>
+            <SelectContent><SelectItem value="all">All Files</SelectItem><SelectItem value="yes">Closed</SelectItem><SelectItem value="no">Open</SelectItem><SelectItem value="disposed_not_closed">Disposed, Not Closed</SelectItem></SelectContent>
           </Select>
           {hasFilters && <Button variant="ghost" size="sm" className="h-8 text-xs text-muted-foreground" onClick={clearFilters}>Clear</Button>}
         </div>
