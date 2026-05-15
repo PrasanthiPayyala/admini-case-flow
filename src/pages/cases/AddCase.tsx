@@ -149,6 +149,28 @@ export default function AddCase() {
       closedBy: "",
       closedAt: "",
       auditTrail: [{ id: `AUD-${Date.now()}`, ts: new Date().toISOString(), actor: "Self", role: "User", action: "Case Registered", details: form.caseNumber }],
+      dateOfListing: form.dateOfListing,
+      prayer: form.prayer,
+      respondentDepartment: form.respondentDepartment,
+      respondentOfficeName: form.respondentOfficeName,
+      respondentName: form.respondentName,
+      affidavitDoc: form.affidavitDocName ? { name: form.affidavitDocName, uploadedBy: "Self", uploadedAt: new Date().toISOString().slice(0, 10) } : null,
+      counterFilingDate: form.counterFilingDate,
+      complianceOfOrders: form.complianceOfOrders,
+      interimOrder: {
+        date: form.interimOrderDate,
+        directionToOfficer: form.interimDirectionToOfficer,
+        disposalPeriod: form.interimDisposalPeriod,
+        compliance: form.interimCompliance,
+        doc: form.interimOrderDocName ? { name: form.interimOrderDocName, uploadedBy: "Self", uploadedAt: new Date().toISOString().slice(0, 10) } : null,
+      },
+      finalOrder: {
+        date: form.finalOrderDate,
+        directionsToOfficer: form.finalDirectionsToOfficer,
+        periodForDisposal: form.finalPeriodForDisposal,
+        complianceOfOrders: form.finalComplianceOfOrders,
+        doc: form.finalOrderDocName ? { name: form.finalOrderDocName, uploadedBy: "Self", uploadedAt: new Date().toISOString().slice(0, 10) } : null,
+      },
     };
     addCase(caseRecord);
     toast({ title: "Case registered", description: `${form.caseNumber} (Sl. No. ${nextSlNo}) created successfully.` });
