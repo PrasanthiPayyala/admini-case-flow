@@ -81,10 +81,11 @@ export default function Dashboard() {
     }
   })();
 
-  const showCharts = ["superadmin", "admin", "collector", "legal", "addlcollector", "dro", "readonly"].includes(dashType);
-  const showDeptTiles = ["superadmin", "admin", "collector", "legal", "addlcollector", "dro", "readonly"].includes(dashType);
-  const showCollectorCards = dashType === "collector";
-  const showApprovalCards = ["collector", "legal", "admin", "superadmin", "addlcollector", "dro"].includes(dashType);
+  const isCollector = dashType === "collector";
+  const showCharts = !isCollector && ["superadmin", "admin", "legal", "addlcollector", "dro", "readonly"].includes(dashType);
+  const showDeptTiles = !isCollector && ["superadmin", "admin", "legal", "addlcollector", "dro", "readonly"].includes(dashType);
+  const showCollectorCards = false;
+  const showApprovalCards = !isCollector && ["legal", "admin", "superadmin", "addlcollector", "dro"].includes(dashType);
 
   // Chart data
   const statusData = [
