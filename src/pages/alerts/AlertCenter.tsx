@@ -198,7 +198,11 @@ export default function AlertCenter() {
               <SelectItem value="counter">Counter Filing Due</SelectItem>
               <SelectItem value="sr">S.R. Number Pending</SelectItem>
               <SelectItem value="direction">Direction Pending</SelectItem>
-              <SelectItem value="closure">Closure Pending</SelectItem>
+              <SelectItem value="disposed not closed">Disposed Not Closed</SelectItem>
+              <SelectItem value="date of listing">Date of Listing Reminder</SelectItem>
+              <SelectItem value="instructions not filed">Instructions Not Filed</SelectItem>
+              <SelectItem value="interim order">Interim Order Compliance</SelectItem>
+              <SelectItem value="final order">Final Order Compliance</SelectItem>
               <SelectItem value="hearing">Hearing Reminder</SelectItem>
             </SelectContent>
           </Select>
