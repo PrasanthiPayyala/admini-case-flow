@@ -328,7 +328,7 @@ export default function CaseDetails() {
               )}
               {permissions?.canApproveCollector && caseData.collectorApprovalStatus === "Pending" && (
                 <Button size="sm" onClick={() => {
-                  setCounterStatus(caseData.id, { collectorApprovalStatus: "Approved", counterDraftStatus: "Filed", counterFiled: "Yes", pendingAtLevel: "Hearing Update" }, actorName, actorRole, "Collector Approved & Counter Filed");
+                  setCounterStatus(caseData.id, { collectorApprovalStatus: "Approved", counterDraftStatus: "Filed", counterFiled: "Yes", counterFilingDate: caseData.counterFilingDate || new Date().toISOString().slice(0,10), pendingAtLevel: "Hearing Update" }, actorName, actorRole, "Collector Approved & Counter Filed");
                   toast({ title: "Collector Approval granted; counter marked filed" });
                 }}>
                   <CheckCircle2 className="h-3.5 w-3.5 mr-1.5" />Collector Approve & File
