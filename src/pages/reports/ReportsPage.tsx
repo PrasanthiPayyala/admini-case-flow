@@ -27,6 +27,9 @@ export default function ReportsPage() {
     if (workflowF === "sr_pending" && (c.counterFiled !== "Yes" || c.srNumber)) return false;
     if (workflowF === "disposed_open" && !(c.disposed === "Yes" && !c.closed)) return false;
     if (workflowF === "closed" && !c.closed) return false;
+    if (workflowF === "interim_pending" && !(c.interimOrder?.date && (c.interimOrder?.compliance === "Pending" || c.interimOrder?.compliance === "Partially Complied"))) return false;
+    if (workflowF === "final_pending" && !(c.finalOrder?.date && ((c.finalOrder?.complianceOfOrders || c.complianceOfOrders) === "Pending" || (c.finalOrder?.complianceOfOrders || c.complianceOfOrders) === "Partially Complied"))) return false;
+    if (workflowF === "listing_pending" && !c.dateOfListing) return false;
     return true;
   });
 
