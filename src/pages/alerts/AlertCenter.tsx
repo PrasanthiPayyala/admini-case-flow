@@ -85,12 +85,72 @@ export default function AlertCenter() {
       if (c.disposed === "Yes" && !c.closed) {
         out.push({
           id: `DRV-CLS-${c.id}`,
-          type: "Closure Pending",
+          type: "Disposed Not Closed",
           message: `Disposed but file not closed — ${c.caseNumber}`,
           caseId: c.id,
           officer: c.assignedOfficer,
           date: c.disposalDate || c.lastUpdated,
           priority: "Low",
+          status: "Pending",
+          channel: "System",
+        });
+      }
+      // Date of Listing reminder
+      if (c.dateOfListing && c.status !== "Closed") {
+        const days = Math.floor((new Date(c.dateOfListing).getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+        if (days >= 0 && days <= 7) {
+          out.push({
+            id: `DRV-LST-${c.id}`,
+            type: "Date of Listing Reminder",
+            message: `Listed in ${days} day(s) — ${c.caseNumber}`,
+            caseId: c.id,
+            officer: c.assignedOfficer,
+            date: c.dateOfListing,
+            priority: days <= 2 ? "High" : "Medium",
+            status: "Pending",
+            channel: "System",
+          });
+        }
+      }
+      // Instructions not filed
+      if (c.instructionsFiled === "Pending" && c.status !== "Closed") {
+        out.push({
+          id: `DRV-INS-${c.id}`,
+          type: "Instructions Not Filed",
+          message: `Instructions still pending — ${c.caseNumber}`,
+          caseId: c.id,
+          officer: c.assignedOfficer,
+          date: c.lastUpdated,
+          priority: "Medium",
+          status: "Pending",
+          channel: "System",
+        });
+      }
+      // Interim order compliance pending
+      if (c.interimOrder?.date && (c.interimOrder.compliance === "Pending" || c.interimOrder.compliance === "Partially Complied")) {
+        out.push({
+          id: `DRV-INT-${c.id}`,
+          type: "Interim Order Compliance Pending",
+          message: `Interim order compliance ${c.interimOrder.compliance.toLowerCase()} — ${c.caseNumber}`,
+          caseId: c.id,
+          officer: c.assignedOfficer,
+          date: c.interimOrder.date,
+          priority: "High",
+          status: "Pending",
+          channel: "System",
+        });
+      }
+      // Final order compliance pending
+      const finalCompliance = c.finalOrder?.complianceOfOrders || c.complianceOfOrders;
+      if (c.finalOrder?.date && (finalCompliance === "Pending" || finalCompliance === "Partially Complied")) {
+        out.push({
+          id: `DRV-FIN-${c.id}`,
+          type: "Final Order Compliance Pending",
+          message: `Final order compliance ${finalCompliance.toLowerCase()} — ${c.caseNumber}`,
+          caseId: c.id,
+          officer: c.assignedOfficer,
+          date: c.finalOrder.date,
+          priority: "High",
           status: "Pending",
           channel: "System",
         });
