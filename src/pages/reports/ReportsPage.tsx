@@ -50,7 +50,15 @@ export default function ReportsPage() {
   };
 
   const exportCSV = () => {
-    const headers = ["Sl.No", "Case Number", "Title", "Court", "Case Type", "Department", "Mandal", "Status", "Pending At", "Instructions Filed", "Counter Filed", "S.R. Number", "Disposed", "Disposal Date", "Closed", "Open Directions", "Compliance", "Last Updated"];
+    const headers = [
+      "Sl.No","Case Number","Title","Court","Case Type","Department","Mandal","Status","Pending At",
+      "Date of Filing","Date of Listing","Prayer",
+      "Respondent Department","Respondent Office","Respondent Name",
+      "Instructions Filed","Counter Filed","Counter Filing Date","S.R. Number",
+      "Date of Interim Order","Interim Compliance",
+      "Date of Final Order","Period for Disposal","Compliance of Orders",
+      "Disposed","Disposal Date","Closed","Open Directions","Compliance","Last Updated",
+    ];
     const rows = filtered.map(c => [
       c.slNo ?? "",
       c.caseNumber,
@@ -61,9 +69,21 @@ export default function ReportsPage() {
       c.mandal,
       c.status,
       c.pendingAtLevel,
+      c.filingDate || "",
+      c.dateOfListing || "",
+      `"${(c.prayer || "").replace(/"/g, '""')}"`,
+      `"${c.respondentDepartment || ""}"`,
+      `"${c.respondentOfficeName || ""}"`,
+      `"${c.respondentName || ""}"`,
       c.instructionsFiled || "",
       c.counterFiled || "",
+      c.counterFilingDate || "",
       c.srNumber || "",
+      c.interimOrder?.date || "",
+      c.interimOrder?.compliance || "",
+      c.finalOrder?.date || "",
+      c.finalOrder?.periodForDisposal || "",
+      c.finalOrder?.complianceOfOrders || c.complianceOfOrders || "",
       c.disposed || "",
       c.disposalDate || "",
       c.closed ? "Yes" : "No",
