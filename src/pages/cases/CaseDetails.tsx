@@ -302,9 +302,10 @@ export default function CaseDetails() {
             )}
 
             {/* Government workflow status row */}
-            <div className="grid grid-cols-2 md:grid-cols-5 gap-2 mb-3 text-xs">
+            <div className="grid grid-cols-2 md:grid-cols-6 gap-2 mb-3 text-xs">
               <div className="bg-muted/40 rounded p-2"><span className="text-[10px] text-muted-foreground">Instructions Filed</span><p className="font-semibold">{caseData.instructionsFiled || "-"}</p></div>
               <div className="bg-muted/40 rounded p-2"><span className="text-[10px] text-muted-foreground">Counter Filed</span><p className="font-semibold">{caseData.counterFiled || "-"}</p></div>
+              <div className="bg-muted/40 rounded p-2"><span className="text-[10px] text-muted-foreground">Counter Filing Date</span><p className="font-semibold">{caseData.counterFilingDate || "—"}</p></div>
               <div className="bg-muted/40 rounded p-2"><span className="text-[10px] text-muted-foreground">S.R. Number</span><p className="font-semibold">{caseData.srNumber || "—"}</p></div>
               <div className="bg-muted/40 rounded p-2"><span className="text-[10px] text-muted-foreground">Disposed</span><p className="font-semibold">{caseData.disposed || "No"}</p></div>
               <div className="bg-muted/40 rounded p-2"><span className="text-[10px] text-muted-foreground">File Closed</span><p className="font-semibold">{caseData.closed ? `Yes (${caseData.closedAt})` : "No"}</p></div>
