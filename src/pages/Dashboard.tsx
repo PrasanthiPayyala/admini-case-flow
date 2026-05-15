@@ -373,7 +373,7 @@ export default function Dashboard() {
       )}
 
       {/* Upcoming Hearings + Land Disputes */}
-      {dashType !== "dataentry" && (
+      {dashType !== "dataentry" && !isCollector && (
         <div className="grid md:grid-cols-2 gap-4 mb-4">
           <div className="govt-card">
             <div className="govt-card-header">
