@@ -175,6 +175,7 @@ export default function Dashboard() {
       )}
 
       {/* Core KPI Row 1 */}
+      {!isCollector && (
       <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-2.5 mb-4">
         <StatsCard title="Total Cases" value={cases.length} icon={Briefcase} href="/cases" />
         <StatsCard title="Fresh" value={freshCases.length} icon={TrendingUp} href="/cases?status=Fresh" accent="success" />
@@ -184,6 +185,7 @@ export default function Dashboard() {
         <StatsCard title="Appeals" value={appeals.length} icon={Scale} href="/appeals" accent="info" />
         <StatsCard title="Alerts" value={pendingAlerts.length} icon={AlertTriangle} href="/alerts" accent="urgent" />
       </div>
+      )}
 
       {/* Row 2: Urgency + Compliance */}
       {showApprovalCards && (
