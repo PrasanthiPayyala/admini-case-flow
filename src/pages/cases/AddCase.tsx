@@ -311,9 +311,30 @@ export default function AddCase() {
           </div>
         </div>
 
+        {/* Petition Details */}
+        <div className="govt-card p-5">
+          <h3 className="text-xs font-semibold text-foreground mb-3">Petition Details</h3>
+          <div className="grid grid-cols-3 gap-3">
+            <div className="space-y-1"><Label className="text-[10px]">Date of Filing</Label><Input type="date" value={form.filingDate} onChange={e => set("filingDate", e.target.value)} className="h-8 text-xs" /></div>
+            <div className="space-y-1"><Label className="text-[10px]">Date of Listing</Label><Input type="date" value={form.dateOfListing} onChange={e => set("dateOfListing", e.target.value)} className="h-8 text-xs" /></div>
+            <div className="space-y-1"><Label className="text-[10px]">Affidavit (file name)</Label><Input value={form.affidavitDocName} onChange={e => set("affidavitDocName", e.target.value)} placeholder="Affidavit_xxx.pdf" className="h-8 text-xs" /></div>
+            <div className="space-y-1 col-span-3"><Label className="text-[10px]">Prayer of the Petitioner</Label><Textarea value={form.prayer} onChange={e => set("prayer", e.target.value)} rows={2} className="text-xs" placeholder="Reliefs sought by the petitioner..." /></div>
+          </div>
+        </div>
+
+        {/* Primary Respondent */}
+        <div className="govt-card p-5">
+          <h3 className="text-xs font-semibold text-foreground mb-3">Primary Respondent</h3>
+          <div className="grid grid-cols-3 gap-3">
+            <div className="space-y-1"><Label className="text-[10px]">Respondent Department</Label><Input value={form.respondentDepartment} onChange={e => set("respondentDepartment", e.target.value)} className="h-8 text-xs" /></div>
+            <div className="space-y-1"><Label className="text-[10px]">Respondent Office Name</Label><Input value={form.respondentOfficeName} onChange={e => set("respondentOfficeName", e.target.value)} className="h-8 text-xs" /></div>
+            <div className="space-y-1"><Label className="text-[10px]">Respondent Name</Label><Input value={form.respondentName} onChange={e => set("respondentName", e.target.value)} className="h-8 text-xs" /></div>
+          </div>
+        </div>
+
         {/* Instructions / Counter */}
         <div className="govt-card p-5">
-          <h3 className="text-xs font-semibold text-foreground mb-3">Instructions / Counter</h3>
+          <h3 className="text-xs font-semibold text-foreground mb-3">Instructions / Counter Filing</h3>
           <div className="grid grid-cols-3 gap-3">
             <div className="space-y-1"><Label className="text-[10px]">Instructions Filed?</Label>
               <Select value={form.instructionsFiled} onValueChange={v => set("instructionsFiled", v)}><SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
@@ -325,11 +346,45 @@ export default function AddCase() {
                 <SelectContent><SelectItem value="Yes">Yes</SelectItem><SelectItem value="No">No</SelectItem><SelectItem value="Pending">Pending</SelectItem></SelectContent>
               </Select>
             </div>
+            <div className="space-y-1"><Label className="text-[10px]">Counter Filing Date</Label><Input type="date" value={form.counterFilingDate} onChange={e => set("counterFilingDate", e.target.value)} className="h-8 text-xs" /></div>
             <div className="space-y-1"><Label className="text-[10px]">S.R. Number of Counter</Label><Input value={form.srNumber} onChange={e => set("srNumber", e.target.value)} placeholder="e.g. SR/1234/2024" className="h-8 text-xs" /></div>
             <div className="space-y-1"><Label className="text-[10px]">Counter Filing Due Date</Label><Input type="date" value={form.counterFilingDueDate} onChange={e => set("counterFilingDueDate", e.target.value)} className="h-8 text-xs" /></div>
-            <div className="space-y-1 col-span-2"><Label className="text-[10px]">Approved Counter (file name)</Label><Input value={form.approvedCounterDocName} onChange={e => set("approvedCounterDocName", e.target.value)} placeholder="Approved_Counter_xxx.pdf" className="h-8 text-xs" /></div>
+            <div className="space-y-1"><Label className="text-[10px]">Approved Counter (file name)</Label><Input value={form.approvedCounterDocName} onChange={e => set("approvedCounterDocName", e.target.value)} placeholder="Approved_Counter_xxx.pdf" className="h-8 text-xs" /></div>
           </div>
         </div>
+
+        {/* Interim Order */}
+        <div className="govt-card p-5">
+          <h3 className="text-xs font-semibold text-foreground mb-3">Interim Order</h3>
+          <div className="grid grid-cols-3 gap-3">
+            <div className="space-y-1"><Label className="text-[10px]">Date of Interim Order</Label><Input type="date" value={form.interimOrderDate} onChange={e => set("interimOrderDate", e.target.value)} className="h-8 text-xs" /></div>
+            <div className="space-y-1"><Label className="text-[10px]">Disposal Period</Label><Input value={form.interimDisposalPeriod} onChange={e => set("interimDisposalPeriod", e.target.value)} placeholder="e.g. 30 days" className="h-8 text-xs" /></div>
+            <div className="space-y-1"><Label className="text-[10px]">Compliance</Label>
+              <Select value={form.interimCompliance} onValueChange={v => set("interimCompliance", v)}><SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+                <SelectContent>{["Not Applicable","Pending","Partially Complied","Complied"].map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1 col-span-2"><Label className="text-[10px]">Direction to Officer</Label><Textarea value={form.interimDirectionToOfficer} onChange={e => set("interimDirectionToOfficer", e.target.value)} rows={2} className="text-xs" /></div>
+            <div className="space-y-1"><Label className="text-[10px]">Interim Order Document</Label><Input value={form.interimOrderDocName} onChange={e => set("interimOrderDocName", e.target.value)} placeholder="Interim_Order_xxx.pdf" className="h-8 text-xs" /></div>
+          </div>
+        </div>
+
+        {/* Final Order */}
+        <div className="govt-card p-5">
+          <h3 className="text-xs font-semibold text-foreground mb-3">Final Order</h3>
+          <div className="grid grid-cols-3 gap-3">
+            <div className="space-y-1"><Label className="text-[10px]">Date of Final Order</Label><Input type="date" value={form.finalOrderDate} onChange={e => set("finalOrderDate", e.target.value)} className="h-8 text-xs" /></div>
+            <div className="space-y-1"><Label className="text-[10px]">Period for Disposal</Label><Input value={form.finalPeriodForDisposal} onChange={e => set("finalPeriodForDisposal", e.target.value)} placeholder="e.g. 60 days" className="h-8 text-xs" /></div>
+            <div className="space-y-1"><Label className="text-[10px]">Compliance of Orders</Label>
+              <Select value={form.finalComplianceOfOrders} onValueChange={v => { set("finalComplianceOfOrders", v); set("complianceOfOrders", v); }}><SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+                <SelectContent>{["Not Applicable","Pending","Partially Complied","Complied"].map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1 col-span-2"><Label className="text-[10px]">Directions to Officer</Label><Textarea value={form.finalDirectionsToOfficer} onChange={e => set("finalDirectionsToOfficer", e.target.value)} rows={2} className="text-xs" /></div>
+            <div className="space-y-1"><Label className="text-[10px]">Final Order Document</Label><Input value={form.finalOrderDocName} onChange={e => set("finalOrderDocName", e.target.value)} placeholder="Final_Order_xxx.pdf" className="h-8 text-xs" /></div>
+          </div>
+        </div>
+
 
         {/* Disposal */}
         <div className="govt-card p-5">
