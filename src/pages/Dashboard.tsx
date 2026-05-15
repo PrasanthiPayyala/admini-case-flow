@@ -237,7 +237,7 @@ export default function Dashboard() {
       )}
 
       {/* Division-wise counts (for Collector, Admin, Legal, DRO) */}
-      {["collector", "admin", "superadmin", "legal", "dro", "addlcollector", "readonly"].includes(dashType) && (
+      {["admin", "superadmin", "legal", "dro", "addlcollector", "readonly"].includes(dashType) && (
         <div className="govt-card mb-4">
           <div className="govt-card-header"><h3><MapPin className="h-3.5 w-3.5" />Division-wise Cases</h3></div>
           <div className="p-3 grid grid-cols-2 gap-2">
