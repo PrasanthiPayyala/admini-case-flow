@@ -74,6 +74,12 @@ export const natureOfCaseOptions = [
 
 export const complianceStatuses = ["Not Applicable", "Pending", "Partially Complied", "Complied"];
 
+export const caseStatuses = [
+  "Fresh", "Under Process", "Under Hearing", "Pending",
+  "Hearing Scheduled", "Counter Pending", "Under Review",
+  "Ongoing", "Appealed", "Disposed", "Closed"
+];
+
 export const pendingAtLevels = [
   "Department", "GP Approval", "Collector Approval", "Counter Filing",
   "Compliance", "Hearing Update", "Final Action", "Closed"
@@ -192,6 +198,29 @@ export interface CaseRecord {
   closedBy?: string;
   closedAt?: string;
   auditTrail?: AuditEntry[];
+  // Extended workflow fields (additive)
+  dateOfListing?: string;
+  prayer?: string;
+  respondentDepartment?: string;
+  respondentOfficeName?: string;
+  respondentName?: string;
+  affidavitDoc?: { name: string; uploadedBy: string; uploadedAt: string } | null;
+  counterFilingDate?: string;
+  complianceOfOrders?: "Not Applicable" | "Pending" | "Partially Complied" | "Complied";
+  interimOrder?: {
+    date?: string;
+    directionToOfficer?: string;
+    disposalPeriod?: string;
+    compliance?: "Not Applicable" | "Pending" | "Partially Complied" | "Complied";
+    doc?: { name: string; uploadedBy: string; uploadedAt: string } | null;
+  };
+  finalOrder?: {
+    date?: string;
+    directionsToOfficer?: string;
+    periodForDisposal?: string;
+    complianceOfOrders?: "Not Applicable" | "Pending" | "Partially Complied" | "Complied";
+    doc?: { name: string; uploadedBy: string; uploadedAt: string } | null;
+  };
 }
 
 export function caseNoYear(c: Pick<CaseRecord, "caseNumber" | "caseYear" | "filingYear">): string {

@@ -42,6 +42,11 @@ const statusMap: Record<string, string> = {
   "Compliance": "bg-violet-50 text-violet-700 border-violet-200",
   "Hearing Update": "bg-blue-50 text-blue-700 border-blue-200",
   "Final Action": "bg-red-50 text-red-600 border-red-200",
+  "Under Process": "bg-blue-50 text-blue-700 border-blue-200",
+  "Under Hearing": "bg-amber-50 text-amber-700 border-amber-200",
+  "Yes": "bg-emerald-50 text-emerald-700 border-emerald-200",
+  "No": "bg-slate-50 text-slate-500 border-slate-200",
+  "Critical": "bg-red-100 text-red-800 border-red-300 font-semibold",
 };
 
 const priorityMap: Record<string, string> = {
