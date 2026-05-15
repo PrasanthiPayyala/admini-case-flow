@@ -18,7 +18,7 @@ import { Button } from "@/components/ui/button";
 const REF_DATE = new Date();
 
 export default function Dashboard() {
-  const { cases: allCases, hearings: allHearings, alerts, appeals } = useData();
+  const { cases: allCases, hearings: allHearings, alerts, appeals, globalAudit } = useData();
   const { currentUser, permissions, users } = useAuth();
   const { filteredCases, filteredHearings, scopeLabel } = useRoleFilter();
   const navigate = useNavigate();
