@@ -139,6 +139,9 @@ export default function ReportsPage() {
               <SelectItem value="instructions_pending">Instructions Pending</SelectItem>
               <SelectItem value="counter_pending">Counter Pending</SelectItem>
               <SelectItem value="sr_pending">S.R. Number Pending</SelectItem>
+              <SelectItem value="interim_pending">Interim Order Compliance Pending</SelectItem>
+              <SelectItem value="final_pending">Final Order Compliance Pending</SelectItem>
+              <SelectItem value="listing_pending">Has Date of Listing</SelectItem>
               <SelectItem value="disposed_open">Disposed (Not Closed)</SelectItem>
               <SelectItem value="closed">Closed Files</SelectItem>
             </SelectContent>
