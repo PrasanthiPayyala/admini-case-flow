@@ -405,7 +405,7 @@ export default function Dashboard() {
       )}
 
       {/* Recent Updates + Alerts */}
-      {dashType !== "dataentry" && (
+      {dashType !== "dataentry" && !isCollector && (
         <div className="grid md:grid-cols-2 gap-4 mb-4">
           <div className="govt-card">
             <div className="govt-card-header"><h3><Activity className="h-3.5 w-3.5" />Updated in Last 7 Days ({last7Days.length})</h3></div>
