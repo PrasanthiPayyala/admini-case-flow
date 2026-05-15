@@ -12,7 +12,7 @@ import { useState } from "react";
 import { useData } from "@/contexts/DataContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
-import { caseTypes, mandals, courtNames, departments, priorities, collectorateInvolvementTypes, natureOfCaseOptions, type Party } from "@/data/sampleData";
+import { caseTypes, mandals, courtNames, departments, priorities, collectorateInvolvementTypes, natureOfCaseOptions, caseStatuses, type Party } from "@/data/sampleData";
 import { PartyEditor } from "./AddCase";
 
 export default function EditCase() {
@@ -123,7 +123,7 @@ export default function EditCase() {
             </div>
             <div className="space-y-1"><Label className="text-[10px]">Status</Label>
               <Select value={form.status} onValueChange={v => set("status", v)}><SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
-                <SelectContent>{["Fresh","Ongoing","Hearing Scheduled","Counter Pending","Under Review","Appealed","Closed"].map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent>
+                <SelectContent>{caseStatuses.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent>
               </Select>
             </div>
             <div className="space-y-1"><Label className="text-[10px]">Nature of Case</Label>
