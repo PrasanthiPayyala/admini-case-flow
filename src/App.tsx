@@ -85,9 +85,9 @@ const App = () => (
       <Sonner />
       <AuthProvider>
         <DataProvider>
-          <BrowserRouter basename="/demo-lcms-ybg-tg">
+          <BrowserRouter>
             <AppRoutes />
-          </BrowserRouter >
+          </BrowserRouter>
         </DataProvider>
       </AuthProvider>
     </TooltipProvider>
