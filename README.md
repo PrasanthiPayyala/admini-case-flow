@@ -219,6 +219,9 @@ Registration → Assignment (Officer / Department)
    → File Closure (gated)
 ```
 
+### Case Statuses
+`Fresh` · `Ongoing` · `Hearing Scheduled` · `Counter Pending` · `Under Process` · `Under Hearing` · `Pending` · `Disposed` · `Closed` · `Appealed`.
+
 ### Pending-At-Level States
 `Department` · `GP Approval` · `Collector Approval` · `Counter Filing` · `Compliance` · `Disposed` · `Closed`.
 
