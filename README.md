@@ -60,16 +60,15 @@ The current build is a **fully-functional UI demo** backed by `localStorage`, de
 - Active/Inactive account enforcement
 - Per-user `lastLogin` tracking
 
-### 2. Executive Dashboard
-- 12+ clickable KPI cards (Fresh, Ongoing, Closed, Land Disputes, Service Matters, Contempt, Pending Counters, Upcoming Hearings, Overdue Compliance, etc.)
-- Role-aware: Collector sees district-wide, RDO sees division-wide, Department Nodal Officer sees department-only
-- Live charts: status mix, court mix, mandal mix, department mix, priority mix
-- Quick links to Fresh / Ongoing / Closed views
+### 2. Dashboards (Role-Aware)
+- **District Collector Dashboard** — simplified, executive, summary-first: district-wide visibility, urgent hearings, pending-action matters, and collectorate-involvement cases. Action-oriented alert/table-driven layout (not an operational processing desk).
+- **Other Role Dashboards** — 12+ clickable KPI cards (Fresh, Ongoing, Closed, Land Disputes, Service Matters, Contempt, Pending Counters, Upcoming Hearings, Overdue Compliance, etc.) with live charts (status / court / mandal / department / priority mix).
+- Scoping: RDO sees division-wide, Department Nodal Officer sees department-only, Mandal-Level User sees mandal-only.
 
 ### 3. Case Management
 - **Case List** — high-density operational table with Petitioner/Respondent + N badge for multi-party, urgency colour-coding (Red ≤0d, Orange 1–3d, Green 4d+)
-- **Case Details** — Summary, multi-Petitioner/Respondent cards, Directions, Actions Taken, Counter, Compliance, Judgment, Audit Trail, document tabs (Filed / Interim / Counter / Compliance / Judgment / Misc)
-- **Add / Edit Case** — full form with validation
+- **Case Details** — Summary, multi-Petitioner/Respondent cards, Petition Details (Prayer, Date of Filing, Date of Listing), Primary Respondent (Department / Office / Name), Directions, Actions Taken, Counter (with Counter Filing Date), Interim Order (date, directions, disposal period, compliance), Final Order (date, directions, disposal period, compliance), Audit Trail, document tabs (Filed / Interim / Counter / Compliance / Judgment / Misc)
+- **Add / Edit Case** — full form with validation, including Affidavit upload, Instructions filed flag, and structured Interim/Final order blocks
 - **Bulk Upload** — CSV ingestion
 - **Fresh / Ongoing / Closed** — pre-filtered shortcuts
 - **HC Status** action — deep-link to Telangana High Court portal
@@ -87,12 +86,13 @@ The current build is a **fully-functional UI demo** backed by `localStorage`, de
 - Due-date monitoring with overdue surfacing
 
 ### 7. Alerts Centre
-- Priority-based alerts (Hearing Due, Counter Due, Compliance Overdue, Direction Pending)
+- Derived priority-based alerts: **Counter Filing Due**, **S.R. Number Pending**, **Direction Pending**, **Disposed Not Closed**, **Date of Listing Reminder**, **Instructions Not Filed**, **Interim Order Compliance Pending**, **Final Order Compliance Pending**, Hearing Reminder
 - Per-officer routing, channel indicator (Email / SMS — UI only)
 
 ### 8. Reports & Analytics
 - Charts: by Status, Court, Mandal, Department, Priority, Filing Year
-- Exportable views (UI shell)
+- CSV export including new workflow fields (Date of Filing, Date of Listing, Prayer, Respondent Dept/Office/Name, Counter Filing Date, Interim/Final order details)
+- Workflow filters: `interim_pending`, `final_pending`, `listing_pending`
 
 ### 9. Admin Panel
 - **Users** — CRUD, role assignment, status toggle, password reset
@@ -218,6 +218,9 @@ Registration → Assignment (Officer / Department)
    → Compliance Tracking → Disposal
    → File Closure (gated)
 ```
+
+### Case Statuses
+`Fresh` · `Ongoing` · `Hearing Scheduled` · `Counter Pending` · `Under Process` · `Under Hearing` · `Pending` · `Disposed` · `Closed` · `Appealed`.
 
 ### Pending-At-Level States
 `Department` · `GP Approval` · `Collector Approval` · `Counter Filing` · `Compliance` · `Disposed` · `Closed`.
