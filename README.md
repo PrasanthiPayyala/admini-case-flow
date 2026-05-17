@@ -86,12 +86,13 @@ The current build is a **fully-functional UI demo** backed by `localStorage`, de
 - Due-date monitoring with overdue surfacing
 
 ### 7. Alerts Centre
-- Priority-based alerts (Hearing Due, Counter Due, Compliance Overdue, Direction Pending)
+- Derived priority-based alerts: **Counter Filing Due**, **S.R. Number Pending**, **Direction Pending**, **Disposed Not Closed**, **Date of Listing Reminder**, **Instructions Not Filed**, **Interim Order Compliance Pending**, **Final Order Compliance Pending**, Hearing Reminder
 - Per-officer routing, channel indicator (Email / SMS — UI only)
 
 ### 8. Reports & Analytics
 - Charts: by Status, Court, Mandal, Department, Priority, Filing Year
-- Exportable views (UI shell)
+- CSV export including new workflow fields (Date of Filing, Date of Listing, Prayer, Respondent Dept/Office/Name, Counter Filing Date, Interim/Final order details)
+- Workflow filters: `interim_pending`, `final_pending`, `listing_pending`
 
 ### 9. Admin Panel
 - **Users** — CRUD, role assignment, status toggle, password reset
