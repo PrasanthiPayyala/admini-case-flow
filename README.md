@@ -60,16 +60,15 @@ The current build is a **fully-functional UI demo** backed by `localStorage`, de
 - Active/Inactive account enforcement
 - Per-user `lastLogin` tracking
 
-### 2. Executive Dashboard
-- 12+ clickable KPI cards (Fresh, Ongoing, Closed, Land Disputes, Service Matters, Contempt, Pending Counters, Upcoming Hearings, Overdue Compliance, etc.)
-- Role-aware: Collector sees district-wide, RDO sees division-wide, Department Nodal Officer sees department-only
-- Live charts: status mix, court mix, mandal mix, department mix, priority mix
-- Quick links to Fresh / Ongoing / Closed views
+### 2. Dashboards (Role-Aware)
+- **District Collector Dashboard** — simplified, executive, summary-first: district-wide visibility, urgent hearings, pending-action matters, and collectorate-involvement cases. Action-oriented alert/table-driven layout (not an operational processing desk).
+- **Other Role Dashboards** — 12+ clickable KPI cards (Fresh, Ongoing, Closed, Land Disputes, Service Matters, Contempt, Pending Counters, Upcoming Hearings, Overdue Compliance, etc.) with live charts (status / court / mandal / department / priority mix).
+- Scoping: RDO sees division-wide, Department Nodal Officer sees department-only, Mandal-Level User sees mandal-only.
 
 ### 3. Case Management
 - **Case List** — high-density operational table with Petitioner/Respondent + N badge for multi-party, urgency colour-coding (Red ≤0d, Orange 1–3d, Green 4d+)
-- **Case Details** — Summary, multi-Petitioner/Respondent cards, Directions, Actions Taken, Counter, Compliance, Judgment, Audit Trail, document tabs (Filed / Interim / Counter / Compliance / Judgment / Misc)
-- **Add / Edit Case** — full form with validation
+- **Case Details** — Summary, multi-Petitioner/Respondent cards, Petition Details (Prayer, Date of Filing, Date of Listing), Primary Respondent (Department / Office / Name), Directions, Actions Taken, Counter (with Counter Filing Date), Interim Order (date, directions, disposal period, compliance), Final Order (date, directions, disposal period, compliance), Audit Trail, document tabs (Filed / Interim / Counter / Compliance / Judgment / Misc)
+- **Add / Edit Case** — full form with validation, including Affidavit upload, Instructions filed flag, and structured Interim/Final order blocks
 - **Bulk Upload** — CSV ingestion
 - **Fresh / Ongoing / Closed** — pre-filtered shortcuts
 - **HC Status** action — deep-link to Telangana High Court portal
