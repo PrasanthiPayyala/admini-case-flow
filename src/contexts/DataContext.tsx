@@ -61,7 +61,7 @@ const ALERTS_KEY = "lcms_alerts";
 const DOCS_KEY = "lcms_case_docs";
 const AUDIT_KEY = "lcms_audit";
 const SEED_VERSION_KEY = "lcms_seed_version";
-const CURRENT_SEED_VERSION = "2026.04.26-130cases";
+const CURRENT_SEED_VERSION = "2026.05.26-contempt";
 
 // Backfill any legacy/seed records missing the new workflow fields.
 function normaliseCase(c: CaseRecord, idx: number): CaseRecord {

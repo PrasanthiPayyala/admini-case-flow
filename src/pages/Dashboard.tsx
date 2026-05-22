@@ -175,247 +175,211 @@ export default function Dashboard() {
       )}
 
       {isCollector && (() => {
-        const disposedOpen = cases.filter(c => c.disposed === "Yes" && !c.closed);
-        const closedAll = cases.filter(c => c.closed || c.status === "Closed");
         const dayMs = 1000 * 60 * 60 * 24;
-        const daysFromToday = (d: string) => Math.ceil((new Date(d).getTime() - REF_DATE.getTime()) / dayMs);
-        const urgencyChip = (days: number) => {
-          if (days <= 0) return "bg-status-urgent/10 text-status-urgent";
-          if (days <= 3) return "bg-status-warning/10 text-status-warning";
-          return "bg-status-success/10 text-status-success";
-        };
-        const attentionHearings = hearings
-          .filter(h => h.status === "Scheduled")
-          .map(h => ({ h, days: daysFromToday(h.date) }))
-          .filter(x => x.days <= 3)
-          .sort((a, b) => a.days - b.days)
-          .slice(0, 10);
-        const caseById = (id: string) => cases.find(c => c.id === id);
+        const monthStart = new Date(REF_DATE.getFullYear(), REF_DATE.getMonth(), 1);
+        const prevMonthStart = new Date(REF_DATE.getFullYear(), REF_DATE.getMonth() - 1, 1);
+        const prevMonthEnd = new Date(REF_DATE.getFullYear(), REF_DATE.getMonth(), 0);
 
-        const pendingActionCases = activeCases.filter(c => {
-          const counterMissing = c.counterFiled !== "Yes";
-          const srMissing = c.counterFiled === "Yes" && !c.srNumber;
-          const dirOpen = (c.directions || []).some(d => d.status !== "Completed");
-          const compPending = c.complianceRequired && c.complianceStatus === "Pending";
-          return counterMissing || srMissing || dirOpen || compPending;
-        }).slice(0, 10);
+        const contemptCases = cases.filter(c => c.caseType === "Contempt Case" && c.status !== "Closed");
+        const contemptNewThisWeek = contemptCases.filter(c => (REF_DATE.getTime() - new Date(c.filingDate).getTime()) / dayMs <= 7).length;
 
-        const nextHearingFor = (caseId: string) => {
-          const future = hearings
-            .filter(h => h.caseId === caseId && h.status === "Scheduled")
-            .sort((a, b) => a.date.localeCompare(b.date));
-          return future[0]?.date || "";
-        };
-        const urgentInvolvement = (list: typeof cases) => list
-          .filter(c => c.status !== "Closed")
-          .map(c => ({ c, next: nextHearingFor(c.id) }))
-          .sort((a, b) => (a.next || "9999").localeCompare(b.next || "9999"))
-          .slice(0, 5);
+        const registeredThisMonth = cases.filter(c => new Date(c.filingDate) >= monthStart).length;
+        const registeredPrevMonth = cases.filter(c => { const d = new Date(c.filingDate); return d >= prevMonthStart && d <= prevMonthEnd; }).length;
+        const monthDelta = registeredPrevMonth ? Math.round(((registeredThisMonth - registeredPrevMonth) / registeredPrevMonth) * 100) : 0;
 
-        const respUrgent = urgentInvolvement(collectRespondent);
-        const coRespUrgent = urgentInvolvement(collectCoRespondent);
+        // Disposal rate — last 3 months
+        const threeMoAgo = new Date(REF_DATE.getTime() - 90 * dayMs);
+        const recent = cases.filter(c => new Date(c.lastUpdated) >= threeMoAgo);
+        const disposed3mo = recent.filter(c => c.status === "Closed" || c.disposed === "Yes").length;
+        const disposalRate = recent.length ? Math.round((disposed3mo / recent.length) * 100) : 0;
 
-        const weekEnd = new Date(REF_DATE.getTime() + 7 * dayMs).toISOString().split("T")[0];
-        const deptRows = departments.map(dept => {
-          const deptCases = cases.filter(c => c.department === dept);
-          const pending = deptCases.filter(c => c.status !== "Closed").length;
-          const compPending = deptCases.filter(c => c.complianceRequired && c.complianceStatus === "Pending").length;
-          const hearingsWeek = hearings.filter(h => h.status === "Scheduled" && h.date >= todayStr && h.date <= weekEnd && deptCases.some(c => c.id === h.caseId)).length;
-          return { dept, total: deptCases.length, pending, compPending, hearingsWeek };
-        }).filter(r => r.total > 0).sort((a, b) => b.pending - a.pending);
+        // Pending closures = disposed but not closed
+        const pendingClosures = cases.filter(c => c.disposed === "Yes" && !c.closed);
 
-        const divRows = Object.entries(divisions).map(([div, mandals]) => {
-          const divCases = cases.filter(c => mandals.includes(c.mandal));
-          const pending = divCases.filter(c => c.status !== "Closed").length;
-          const upcoming = hearings.filter(h => h.status === "Scheduled" && h.date >= todayStr && divCases.some(c => c.id === h.caseId)).length;
-          return { div, total: divCases.length, pending, upcoming };
-        });
+        // Tomorrow's hearings at HC
+        const hcHearingsTomorrow = hearingsTomorrow.filter(h => (h.court || "").toLowerCase().includes("high court"));
 
-        const sevenDaysAgo = new Date(REF_DATE.getTime() - 7 * dayMs).toISOString();
-        const trackedActions = ["Hearing", "Counter", "Direction", "Action Taken", "Disposed", "Closed"];
-        const recentFeed = (globalAudit || [])
-          .filter(a => a.ts >= sevenDaysAgo && trackedActions.some(t => a.action.includes(t)))
-          .slice(0, 15);
+        // Requires your attention: contempt + urgent counter/compliance/listing
+        const todayMs = REF_DATE.getTime();
+        const attention = activeCases.map(c => {
+          const isContempt = c.caseType === "Contempt Case";
+          const counterDue = c.counterFilingDueDate && c.counterFiled !== "Yes" ? Math.ceil((new Date(c.counterFilingDueDate).getTime() - todayMs) / dayMs) : null;
+          const listingDays = c.dateOfListing ? Math.ceil((new Date(c.dateOfListing).getTime() - todayMs) / dayMs) : null;
+          let label = "";
+          let urgency = 99;
+          if (isContempt) { label = "Contempt — personal appearance risk"; urgency = -10; }
+          else if (counterDue !== null && counterDue <= 3) { label = `Counter due in ${counterDue}d`; urgency = counterDue; }
+          else if (listingDays !== null && listingDays >= 0 && listingDays <= 3) { label = `Listed in ${listingDays}d`; urgency = listingDays; }
+          else if (c.complianceRequired && c.complianceStatus === "Pending") { label = "Compliance pending"; urgency = 5; }
+          else return null;
+          return { c, label, urgency };
+        }).filter(Boolean).sort((a, b) => a!.urgency - b!.urgency).slice(0, 14) as { c: typeof cases[0]; label: string; urgency: number }[];
 
-        const statusDonut = [
-          { name: "Fresh", value: freshCases.length, color: "hsl(142,50%,40%)" },
-          { name: "Ongoing", value: ongoingCases.length, color: "hsl(207,60%,45%)" },
-          { name: "Counter Pending", value: counterPending.length, color: "hsl(25,85%,50%)" },
-          { name: "Disposed", value: disposedOpen.length, color: "hsl(270,40%,50%)" },
-          { name: "Closed", value: closedAll.length, color: "hsl(215,15%,55%)" },
-        ].filter(d => d.value > 0);
+        const formatNow = REF_DATE.toLocaleString("en-IN", { weekday: "short", day: "2-digit", month: "short", year: "numeric", hour: "numeric", minute: "2-digit", hour12: true });
+        const tomorrowFmt = tomorrow.toLocaleDateString("en-IN", { weekday: "short", day: "2-digit", month: "short", year: "numeric" });
 
         return (
           <>
-            <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-2.5 mb-3">
-              <StatsCard title="Total Cases" value={cases.length} icon={Briefcase} href="/cases" />
-              <StatsCard title="Fresh" value={freshCases.length} icon={TrendingUp} href="/cases?status=Fresh" accent="success" />
-              <StatsCard title="Ongoing" value={ongoingCases.length} icon={Clock} href="/cases?status=Ongoing" accent="info" />
-              <StatsCard title="Disposed" value={disposedOpen.length} icon={Archive} href="/cases?closure=Pending" accent="info" />
-              <StatsCard title="Closed" value={closedAll.length} icon={CheckCircle2} href="/cases/closed" />
-              <StatsCard title="Hearings Tomorrow" value={hearingsTomorrow.length} icon={CalendarDays} href="/hearings" accent="warning" />
-              <StatsCard title="Counter Pending" value={counterPending.length} icon={FileText} href="/cases?status=Counter+Pending" accent="warning" />
-              <StatsCard title="Compliance Pending" value={compliancePending.length} icon={ShieldCheck} href="/compliance" accent="urgent" />
-            </div>
-
-            <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-2.5 mb-4">
-              <StatsCard title="Collectorate Respondent" value={collectRespondent.length} icon={Landmark} href="/cases?involvement=Collectorate+as+Respondent" accent="urgent" />
-              <StatsCard title="Co-Respondent" value={collectCoRespondent.length} icon={Building2} href="/cases?involvement=Collectorate+as+Co-Respondent" accent="warning" />
-              <StatsCard title="Directions Pending" value={directionsPending.length} icon={AlertTriangle} href="/cases?directions=Pending" accent="urgent" />
-              <StatsCard title="Action Taken Pending" value={instructionsPending.length} icon={ClipboardList} href="/cases?instructions=Pending" accent="warning" />
-              <StatsCard title="GP Approval" value={gpApprovalPending.length} icon={FileText} href="/cases?gpApproval=Pending" accent="warning" />
-              <StatsCard title="Collector Approval" value={collectorApprovalPending.length} icon={CheckCircle2} href="/cases?collectorApproval=Pending" accent="urgent" />
-              <StatsCard title="Long Pending" value={longPendingCases.length} icon={Hourglass} subtitle=">1 year" href="/cases" accent="warning" />
-              <StatsCard title="Last 7 Days Updates" value={last7Days.length} icon={Activity} href="/cases" accent="info" />
-            </div>
-
-            <div className="govt-card mb-4">
-              <div className="govt-card-header">
-                <h3><Gavel className="h-3.5 w-3.5" />Hearings Requiring Attention ({attentionHearings.length})</h3>
-                <Link to="/hearings" className="text-[10px] text-primary hover:underline flex items-center gap-0.5">All Hearings <ArrowRight className="h-3 w-3" /></Link>
-              </div>
-              <table className="w-full govt-table">
-                <thead><tr><th>Case No.</th><th>Petitioner</th><th>Department</th><th>Next Hearing</th><th>Days Left</th><th>Status</th></tr></thead>
-                <tbody>
-                  {attentionHearings.map(({ h, days }) => {
-                    const c = caseById(h.caseId);
-                    return (
-                      <tr key={h.id} className="cursor-pointer" onClick={() => navigate(`/cases/${encodeURIComponent(h.caseId)}`)}>
-                        <td className="text-xs font-medium text-foreground whitespace-nowrap">{c?.caseNumber || h.caseId}</td>
-                        <td className="text-xs max-w-[180px] truncate">{c?.petitioner || h.caseTitle}</td>
-                        <td className="text-[10px]">{c?.department || "—"}</td>
-                        <td className="text-xs whitespace-nowrap">{h.date}</td>
-                        <td><span className={`px-2 py-0.5 rounded text-[10px] font-semibold ${urgencyChip(days)}`}>{days <= 0 ? `${Math.abs(days)}d overdue` : `${days}d left`}</span></td>
-                        <td><StatusBadge value={c?.status || h.status} /></td>
-                      </tr>
-                    );
-                  })}
-                  {attentionHearings.length === 0 && <tr><td colSpan={6} className="text-center py-4 text-muted-foreground text-xs">No urgent hearings in the next 3 days</td></tr>}
-                </tbody>
-              </table>
-            </div>
-
-            <div className="govt-card mb-4">
-              <div className="govt-card-header">
-                <h3><AlertTriangle className="h-3.5 w-3.5" />Pending Action Cases ({pendingActionCases.length})</h3>
-                <Link to="/cases?status=Counter+Pending" className="text-[10px] text-primary hover:underline flex items-center gap-0.5">View All <ArrowRight className="h-3 w-3" /></Link>
-              </div>
-              <table className="w-full govt-table">
-                <thead><tr><th>Case No.</th><th>Department</th><th>Pending At</th><th>Responsible Officer</th><th>Due Date</th><th>Priority</th></tr></thead>
-                <tbody>
-                  {pendingActionCases.map(c => (
-                    <tr key={c.id} className="cursor-pointer" onClick={() => navigate(`/cases/${encodeURIComponent(c.id)}`)}>
-                      <td className="text-xs font-medium text-foreground whitespace-nowrap">{c.caseNumber}</td>
-                      <td className="text-[10px]">{c.department}</td>
-                      <td className="text-[10px] font-medium">{c.pendingAtLevel || "—"}</td>
-                      <td className="text-[10px]">{c.assignedOfficer}</td>
-                      <td className="text-xs whitespace-nowrap">{(c as any).counterFilingDueDate || c.complianceDueDate || "—"}</td>
-                      <td><StatusBadge value={c.priority} type="priority" /></td>
-                    </tr>
-                  ))}
-                  {pendingActionCases.length === 0 && <tr><td colSpan={6} className="text-center py-4 text-muted-foreground text-xs">No pending action cases</td></tr>}
-                </tbody>
-              </table>
-            </div>
-
-            <div className="grid md:grid-cols-2 gap-4 mb-4">
-              {[
-                { label: "Collectorate as Respondent", list: respUrgent, total: collectRespondent.length, href: "/cases?involvement=Collectorate+as+Respondent", icon: Landmark },
-                { label: "Collectorate as Co-Respondent", list: coRespUrgent, total: collectCoRespondent.length, href: "/cases?involvement=Collectorate+as+Co-Respondent", icon: Building2 },
-              ].map(({ label, list, total, href, icon: Icn }) => (
-                <div key={label} className="govt-card">
-                  <div className="govt-card-header">
-                    <h3><Icn className="h-3.5 w-3.5" />{label}</h3>
-                    <Link to={href} className="text-[10px] text-primary hover:underline flex items-center gap-0.5">{total} cases <ArrowRight className="h-3 w-3" /></Link>
+            {/* Contempt alert banner */}
+            {contemptCases.length > 0 && (
+              <div className="mb-5 rounded-md bg-status-urgent text-white p-4 flex items-center justify-between shadow-sm" style={{ backgroundImage: "repeating-linear-gradient(135deg, transparent, transparent 14px, rgba(255,255,255,0.06) 14px, rgba(255,255,255,0.06) 28px)" }}>
+                <div className="flex items-center gap-3">
+                  <div className="p-2 rounded bg-white/15"><AlertTriangle className="h-5 w-5" /></div>
+                  <div>
+                    <p className="text-[10px] font-bold tracking-widest uppercase opacity-90">Contempt Alert</p>
+                    <p className="text-base font-semibold leading-tight">{contemptCases.length} active contempt case{contemptCases.length > 1 ? "s" : ""} require your attention</p>
                   </div>
-                  <table className="w-full govt-table">
-                    <thead><tr><th>Case No.</th><th>Petitioner</th><th>Next Hearing</th><th>Status</th></tr></thead>
-                    <tbody>
-                      {list.map(({ c, next }) => (
-                        <tr key={c.id} className="cursor-pointer" onClick={() => navigate(`/cases/${encodeURIComponent(c.id)}`)}>
-                          <td className="text-xs font-medium whitespace-nowrap">{c.caseNumber}</td>
-                          <td className="text-xs max-w-[160px] truncate">{c.petitioner}</td>
-                          <td className="text-xs whitespace-nowrap">{next || "—"}</td>
-                          <td><StatusBadge value={c.status} /></td>
-                        </tr>
-                      ))}
-                      {list.length === 0 && <tr><td colSpan={4} className="text-center py-4 text-muted-foreground text-xs">No active matters</td></tr>}
-                    </tbody>
-                  </table>
                 </div>
-              ))}
+                <Link to="/cases?caseType=Contempt+Case"><Button variant="secondary" size="sm" className="bg-white text-status-urgent hover:bg-white/90 font-semibold">View Contempt Cases <ArrowRight className="h-3.5 w-3.5 ml-1" /></Button></Link>
+              </div>
+            )}
+
+            {/* Header strip */}
+            <div className="flex items-start justify-between mb-5 flex-wrap gap-3">
+              <div>
+                <h2 className="text-2xl font-bold text-foreground tracking-tight">District Legal Cell — Yadadri Bhuvanagiri</h2>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Hon'ble Collector's view · <span className="font-medium text-foreground">{currentUser?.name}</span> · As of <span className="font-semibold text-foreground">{formatNow}</span>
+                </p>
+              </div>
+              <div className="flex gap-2">
+                <Link to="/reports"><Button variant="outline" size="sm"><FileText className="h-3.5 w-3.5 mr-1.5" />Export brief</Button></Link>
+                <Button variant="ghost" size="sm" onClick={() => window.print()}><FileText className="h-3.5 w-3.5 mr-1.5" />Print</Button>
+              </div>
             </div>
 
-            <div className="grid md:grid-cols-3 gap-4 mb-4">
-              <div className="govt-card md:col-span-2">
-                <div className="govt-card-header"><h3><Building2 className="h-3.5 w-3.5" />Department-wise Snapshot</h3></div>
+            {/* 4 hero KPI cards */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
+              <Link to="/cases?caseType=Contempt+Case" className="govt-card p-5 hover:border-status-urgent/40 transition-colors">
+                <div className="flex items-start justify-between">
+                  <div>
+                    <p className="text-[10px] font-bold uppercase tracking-wider text-status-urgent">Contempt Cases</p>
+                    <p className="text-4xl font-bold text-status-urgent mt-2">{contemptCases.length}</p>
+                    <p className="text-[11px] text-muted-foreground mt-2">{contemptCases.length} active · {contemptNewThisWeek} new this week</p>
+                  </div>
+                  <div className="p-2 rounded bg-status-urgent/10"><AlertTriangle className="h-4 w-4 text-status-urgent" /></div>
+                </div>
+              </Link>
+
+              <Link to="/cases?action=pending" className="govt-card p-5 hover:border-status-warning/40 transition-colors">
+                <div className="flex items-start justify-between">
+                  <div>
+                    <p className="text-[10px] font-bold uppercase tracking-wider text-status-warning">Hearings Tomorrow · Action Pending</p>
+                    <p className="text-4xl font-bold text-status-warning mt-2">{hearingsTomorrow.length}</p>
+                    <p className="text-[11px] text-muted-foreground mt-2">cases require counter / compliance</p>
+                  </div>
+                  <div className="p-2 rounded bg-status-warning/10"><Clock className="h-4 w-4 text-status-warning" /></div>
+                </div>
+              </Link>
+
+              <Link to="/cases" className="govt-card p-5 hover:border-primary/40 transition-colors">
+                <div className="flex items-start justify-between">
+                  <div>
+                    <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Registered This Month</p>
+                    <p className="text-4xl font-bold text-foreground mt-2">{registeredThisMonth}</p>
+                    {registeredPrevMonth > 0 && (
+                      <p className={`text-[11px] mt-2 font-medium ${monthDelta >= 0 ? "text-status-success" : "text-status-urgent"}`}>{monthDelta >= 0 ? "↑" : "↓"} {Math.abs(monthDelta)}% vs last month</p>
+                    )}
+                  </div>
+                  <div className="p-2 rounded bg-muted"><FileText className="h-4 w-4 text-muted-foreground" /></div>
+                </div>
+              </Link>
+
+              <div className="govt-card p-5">
+                <div className="flex items-start justify-between">
+                  <div className="flex-1">
+                    <p className="text-[10px] font-bold uppercase tracking-wider text-status-success">Disposal Rate · 3-Mo Rolling</p>
+                    <p className="text-4xl font-bold text-status-success mt-2">{disposalRate}<span className="text-2xl">%</span></p>
+                    <div className="mt-3 h-1.5 bg-muted rounded-full overflow-hidden">
+                      <div className="h-full bg-status-success" style={{ width: `${disposalRate}%` }} />
+                    </div>
+                  </div>
+                  <div className="p-2 rounded bg-status-success/10 ml-2"><CheckCircle2 className="h-4 w-4 text-status-success" /></div>
+                </div>
+              </div>
+            </div>
+
+            {/* Quick action tiles */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 mb-5">
+              <Link to="/cases/new" className="govt-card p-4 flex items-center justify-between border-l-4 border-l-primary hover:bg-muted/30 transition-colors">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 rounded bg-primary/10"><FileText className="h-4 w-4 text-primary" /></div>
+                  <div><p className="text-sm font-semibold text-foreground">Register New Case</p><p className="text-[10px] text-muted-foreground">Add a new writ, contempt or appeal</p></div>
+                </div>
+                <ArrowRight className="h-4 w-4 text-muted-foreground" />
+              </Link>
+              <Link to="/cases?caseType=Contempt+Case" className="govt-card p-4 flex items-center justify-between border-l-4 border-l-status-urgent hover:bg-muted/30 transition-colors">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 rounded bg-status-urgent/10"><AlertTriangle className="h-4 w-4 text-status-urgent" /></div>
+                  <div><p className="text-sm font-semibold text-foreground">View Contempt Cases</p><p className="text-[10px] text-muted-foreground">{contemptCases.length} active · personal-appearance risk</p></div>
+                </div>
+                <ArrowRight className="h-4 w-4 text-muted-foreground" />
+              </Link>
+              <Link to="/hearings" className="govt-card p-4 flex items-center justify-between border-l-4 border-l-status-warning hover:bg-muted/30 transition-colors">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 rounded bg-status-warning/10"><Gavel className="h-4 w-4 text-status-warning" /></div>
+                  <div><p className="text-sm font-semibold text-foreground">Tomorrow's Hearings</p><p className="text-[10px] text-muted-foreground">{hcHearingsTomorrow.length} listed at HC Telangana</p></div>
+                </div>
+                <ArrowRight className="h-4 w-4 text-muted-foreground" />
+              </Link>
+              <Link to="/cases?closure=Pending" className="govt-card p-4 flex items-center justify-between border-l-4 border-l-status-success hover:bg-muted/30 transition-colors">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 rounded bg-status-success/10"><CheckCircle2 className="h-4 w-4 text-status-success" /></div>
+                  <div><p className="text-sm font-semibold text-foreground">Pending Closures</p><p className="text-[10px] text-muted-foreground">{pendingClosures.length} compliances awaiting</p></div>
+                </div>
+                <ArrowRight className="h-4 w-4 text-muted-foreground" />
+              </Link>
+            </div>
+
+            {/* Two-column: Attention + Tomorrow at HC */}
+            <div className="grid lg:grid-cols-2 gap-4 mb-4">
+              <div className="govt-card">
+                <div className="govt-card-header">
+                  <h3><AlertTriangle className="h-3.5 w-3.5 text-status-urgent" />Requires your attention</h3>
+                  <Link to="/cases" className="text-[10px] text-primary hover:underline flex items-center gap-0.5">See all {attention.length} <ArrowRight className="h-3 w-3" /></Link>
+                </div>
                 <table className="w-full govt-table">
-                  <thead><tr><th>Department</th><th className="text-right">Total</th><th className="text-right">Pending</th><th className="text-right">Compliance Pending</th><th className="text-right">Hearings This Week</th></tr></thead>
+                  <thead><tr><th>Case No.</th><th>Type</th><th>Reason</th><th>Officer</th></tr></thead>
                   <tbody>
-                    {deptRows.map(r => (
-                      <tr key={r.dept}>
-                        <td className="text-xs font-medium"><Link to={`/cases?department=${encodeURIComponent(r.dept)}`} className="hover:text-primary">{r.dept}</Link></td>
-                        <td className="text-xs text-right">{r.total}</td>
-                        <td className="text-xs text-right text-status-warning font-semibold">{r.pending || "—"}</td>
-                        <td className="text-xs text-right text-status-urgent font-semibold">{r.compPending || "—"}</td>
-                        <td className="text-xs text-right">{r.hearingsWeek || "—"}</td>
+                    {attention.slice(0, 8).map(({ c, label }) => (
+                      <tr key={c.id} className="cursor-pointer" onClick={() => navigate(`/cases/${encodeURIComponent(c.id)}`)}>
+                        <td className="text-xs font-medium whitespace-nowrap">{c.caseNumber}</td>
+                        <td><StatusBadge value={c.caseType === "Contempt Case" ? "Critical" : c.priority} type="priority" size="sm" /></td>
+                        <td className="text-[11px] max-w-[220px] truncate">{label}</td>
+                        <td className="text-[10px] truncate max-w-[140px]">{c.assignedOfficer}</td>
                       </tr>
                     ))}
+                    {attention.length === 0 && <tr><td colSpan={4} className="text-center py-6 text-xs text-muted-foreground">All clear — no urgent items.</td></tr>}
                   </tbody>
                 </table>
               </div>
-              <div className="govt-card p-4">
-                <h3 className="text-xs font-semibold text-foreground mb-2">Cases by Status</h3>
-                <ResponsiveContainer width="100%" height={200}>
-                  <PieChart>
-                    <Pie data={statusDonut} cx="50%" cy="50%" innerRadius={40} outerRadius={75} dataKey="value" label={({ name, value }) => `${name}: ${value}`} fontSize={9}>
-                      {statusDonut.map((e, i) => <Cell key={i} fill={e.color} />)}
-                    </Pie>
-                    <Tooltip />
-                  </PieChart>
-                </ResponsiveContainer>
-              </div>
-            </div>
 
-            <div className="grid md:grid-cols-2 gap-4 mb-4">
-              {divRows.map(r => (
-                <Link key={r.div} to={`/cases?division=${encodeURIComponent(r.div)}`} className="govt-card p-4 hover:border-primary/40 transition-colors">
-                  <div className="flex items-start justify-between mb-3">
-                    <div>
-                      <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Division</p>
-                      <h4 className="text-sm font-bold text-foreground">{r.div}</h4>
-                    </div>
-                    <MapPin className="h-4 w-4 text-primary" />
+              <div className="govt-card">
+                <div className="govt-card-header">
+                  <h3><Gavel className="h-3.5 w-3.5 text-primary" />Tomorrow at the High Court</h3>
+                  <span className="text-[10px] text-muted-foreground">{tomorrowFmt}</span>
+                </div>
+                <div className="px-3 pt-2">
+                  <div className="text-[11px] p-2.5 rounded bg-status-warning/10 text-status-warning border border-status-warning/30 mb-2 flex items-center gap-2">
+                    <AlertTriangle className="h-3.5 w-3.5 flex-shrink-0" />
+                    <span>Bench not yet confirmed by Liaison for tomorrow — last updated 4 hours ago.</span>
                   </div>
-                  <div className="grid grid-cols-3 gap-2">
-                    <div className="text-center p-2 bg-muted/50 rounded"><p className="text-lg font-bold text-foreground">{r.total}</p><p className="text-[10px] text-muted-foreground">Total</p></div>
-                    <div className="text-center p-2 bg-muted/50 rounded"><p className="text-lg font-bold text-status-warning">{r.pending}</p><p className="text-[10px] text-muted-foreground">Pending</p></div>
-                    <div className="text-center p-2 bg-muted/50 rounded"><p className="text-lg font-bold text-primary">{r.upcoming}</p><p className="text-[10px] text-muted-foreground">Hearings</p></div>
-                  </div>
-                </Link>
-              ))}
-            </div>
-
-            <div className="govt-card mb-4">
-              <div className="govt-card-header"><h3><Activity className="h-3.5 w-3.5" />Recent Updates (Last 7 Days)</h3></div>
-              <div className="max-h-80 overflow-y-auto">
+                </div>
                 <table className="w-full govt-table">
-                  <thead className="sticky top-0 bg-card"><tr><th>Timestamp</th><th>Case No.</th><th>Action</th><th>By</th></tr></thead>
+                  <thead><tr><th>Case No.</th><th>Petitioner</th><th>Time</th><th>Type</th></tr></thead>
                   <tbody>
-                    {recentFeed.map(a => {
-                      const m = a.details?.match(/^\[([^\]]+)\]/);
-                      const caseId = m?.[1];
-                      const c = caseId ? caseById(caseId) : undefined;
+                    {hcHearingsTomorrow.slice(0, 8).map(h => {
+                      const c = cases.find(x => x.id === h.caseId);
                       return (
-                        <tr key={a.id} className={caseId ? "cursor-pointer" : ""} onClick={() => caseId && navigate(`/cases/${encodeURIComponent(caseId)}`)}>
-                          <td className="text-[10px] whitespace-nowrap">{new Date(a.ts).toLocaleString()}</td>
-                          <td className="text-xs font-medium whitespace-nowrap">{c?.caseNumber || caseId || "—"}</td>
-                          <td className="text-xs">{a.action}</td>
-                          <td className="text-[10px]">{a.actor} <span className="text-muted-foreground">({a.role})</span></td>
+                        <tr key={h.id} className="cursor-pointer" onClick={() => navigate(`/cases/${encodeURIComponent(h.caseId)}`)}>
+                          <td className="text-xs font-medium whitespace-nowrap">{c?.caseNumber || h.caseId}</td>
+                          <td className="text-xs max-w-[160px] truncate">{c?.petitioner || h.caseTitle}</td>
+                          <td className="text-[11px] whitespace-nowrap">{h.time || "—"}</td>
+                          <td className="text-[10px]">{h.type}</td>
                         </tr>
                       );
                     })}
-                    {recentFeed.length === 0 && <tr><td colSpan={4} className="text-center py-4 text-muted-foreground text-xs">No workflow activity in the last 7 days</td></tr>}
+                    {hcHearingsTomorrow.length === 0 && <tr><td colSpan={4} className="text-center py-6 text-xs text-muted-foreground">No High Court matters listed for tomorrow.</td></tr>}
                   </tbody>
                 </table>
               </div>
@@ -423,6 +387,7 @@ export default function Dashboard() {
           </>
         );
       })()}
+
 
       {/* Core KPI Row 1 */}
       {!isCollector && (
