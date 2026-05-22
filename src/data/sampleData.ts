@@ -451,7 +451,7 @@ export const cases: CaseRecord[] = [
   }),
   makeCase({
     id: "LCMS/YBG/2024/009", caseNumber: "WP 16789/2024", title: "Writ - Mutation Delay, Addagudur",
-    court: "Telangana High Court", courtType: "High Court", caseType: "Writ Petition",
+    court: "Telangana High Court", courtType: "High Court", caseType: "Contempt Case",
     petitioner: "A. Narayana Swamy", respondent: "District Collector, Yadadri Bhuvanagiri",
     coRespondents: ["Tahsildar, Addagudur", "Survey Department"],
     department: "Land Records", mandal: "Addagudur", filingDate: "2024-03-15", filingYear: "2024",
@@ -638,7 +638,7 @@ export const cases: CaseRecord[] = [
   }),
   makeCase({
     id: "LCMS/YBG/2025/020", caseNumber: "WP 3456/2025", title: "Land Acquisition Stay - NH Expansion, Choutuppal",
-    court: "Telangana High Court", courtType: "High Court", caseType: "Writ Petition",
+    court: "Telangana High Court", courtType: "High Court", caseType: "Contempt Case",
     petitioner: "Local Resident Welfare Association", respondent: "District Collector, Yadadri Bhuvanagiri",
     coRespondents: ["Roads & Buildings Division Officer", "Revenue Divisional Officer"],
     department: "Roads & Buildings", mandal: "Choutuppal", filingDate: "2025-02-20", filingYear: "2025",
@@ -934,7 +934,7 @@ export const cases: CaseRecord[] = [
   }),
   makeCase({
     id: "LCMS/YBG/2023/101", caseNumber: "WP 1001/2023", title: "Challenge to district administrative order - Bhongir",
-    court: "Telangana High Court", courtType: "High Court", caseType: "Writ Petition",
+    court: "Telangana High Court", courtType: "High Court", caseType: "Contempt Case",
     petitioner: "S. Krishna Murthy", respondent: "District Collector, Yadadri Bhuvanagiri",
     coRespondents: ["Tahsildar, Bhongir", "Survey & Settlement Officer", "Revenue Divisional Officer"],
     department: "Collectorate Legal Cell", mandal: "Bhongir", filingDate: "2023-01-01", filingYear: "2023",
