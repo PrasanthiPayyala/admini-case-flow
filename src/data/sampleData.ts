@@ -38,7 +38,7 @@ export const collectotateSections = [
 ];
 
 export const caseTypes = [
-  "Writ Petition", "Land Dispute", "Revenue Matter", "Civil Suit",
+  "Writ Petition", "Contempt Case", "Land Dispute", "Revenue Matter", "Civil Suit",
   "Tribunal Matter", "Consumer Matter", "Service Matter",
   "Encroachment Matter", "Compensation Matter", "Compliance Matter"
 ];
