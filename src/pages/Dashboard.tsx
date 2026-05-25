@@ -366,6 +366,9 @@ export default function Dashboard() {
               )}
             </div>
 
+            {/* Total Cases — Court-wise Classification analytics */}
+            <CollectorCaseAnalytics cases={cases} hearings={hearings} />
+
             {/* Quick action tiles */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-5">
               <Link to="/cases/new" className="govt-card p-4 flex items-center justify-between border-l-4 border-l-primary hover:bg-muted/30 transition-colors">
