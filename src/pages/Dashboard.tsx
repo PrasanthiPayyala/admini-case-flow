@@ -307,22 +307,66 @@ export default function Dashboard() {
                 </div>
               </Link>
 
-              <div className="govt-card p-5">
+              <Link to="/cases?involvement=Collectorate+as+Respondent" className="govt-card p-5 hover:border-primary/40 transition-colors">
                 <div className="flex items-start justify-between">
-                  <div className="flex-1">
-                    <p className="text-[10px] font-bold uppercase tracking-wider text-status-success">Disposal Rate · 3-Mo Rolling</p>
-                    <p className="text-4xl font-bold text-status-success mt-2">{disposalRate}<span className="text-2xl">%</span></p>
-                    <div className="mt-3 h-1.5 bg-muted rounded-full overflow-hidden">
-                      <div className="h-full bg-status-success" style={{ width: `${disposalRate}%` }} />
-                    </div>
+                  <div>
+                    <p className="text-[10px] font-bold uppercase tracking-wider text-primary">Collectorate as Respondent</p>
+                    <p className="text-4xl font-bold text-foreground mt-2">{respActive.length}</p>
+                    <p className="text-[11px] text-muted-foreground mt-2">active · +{coRespActive.length} as Co-Respondent</p>
                   </div>
-                  <div className="p-2 rounded bg-status-success/10 ml-2"><CheckCircle2 className="h-4 w-4 text-status-success" /></div>
+                  <div className="p-2 rounded bg-primary/10"><Landmark className="h-4 w-4 text-primary" /></div>
+                </div>
+              </Link>
+            </div>
+
+            {/* Compliance — Failed / Overdue */}
+            <div className="govt-card mb-4">
+              <div className="govt-card-header">
+                <h3><AlertTriangle className="h-3.5 w-3.5 text-status-urgent" />Compliance — Failed / Overdue</h3>
+                <Link to="/compliance" className="text-[10px] text-primary hover:underline flex items-center gap-0.5">Open Compliance Tracker <ArrowRight className="h-3 w-3" /></Link>
+              </div>
+              <div className="px-3 pt-3 grid grid-cols-3 gap-2">
+                <div className="text-center p-2 rounded bg-status-urgent/10 border border-status-urgent/20">
+                  <p className="text-lg font-bold text-status-urgent">{compliancePendingCount}</p>
+                  <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Pending</p>
+                </div>
+                <div className="text-center p-2 rounded bg-status-warning/10 border border-status-warning/20">
+                  <p className="text-lg font-bold text-status-warning">{compliancePartialCount}</p>
+                  <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Partially Complied</p>
+                </div>
+                <div className="text-center p-2 rounded bg-status-urgent/10 border border-status-urgent/30">
+                  <p className="text-lg font-bold text-status-urgent">{complianceOverdueCount}</p>
+                  <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Overdue</p>
                 </div>
               </div>
+              <table className="w-full govt-table mt-2">
+                <thead><tr><th>Case No.</th><th>Title</th><th>Court</th><th>Order Summary</th><th>Department</th><th>Status</th><th>Due Date</th><th>Completed</th><th>Last Officer</th></tr></thead>
+                <tbody>
+                  {complianceFailed.slice(0, 10).map(({ c, overdue }) => (
+                    <tr key={c.id} className={`cursor-pointer ${overdue ? "border-l-2 border-l-status-urgent" : ""}`} onClick={() => navigate(`/cases/${encodeURIComponent(c.id)}`)}>
+                      <td className="text-xs font-medium whitespace-nowrap">{c.caseNumber}</td>
+                      <td className="text-xs max-w-[160px] truncate">{c.title}</td>
+                      <td className="text-[11px] max-w-[120px] truncate">{c.court}</td>
+                      <td className="text-[11px] max-w-[180px] truncate">{c.orderSummary || "-"}</td>
+                      <td className="text-[11px] whitespace-nowrap">{c.department}</td>
+                      <td><StatusBadge value={c.complianceStatus} size="sm" /></td>
+                      <td className={`text-[11px] whitespace-nowrap ${overdue ? "text-status-urgent font-semibold" : ""}`}>{c.complianceDueDate || "-"}</td>
+                      <td className="text-[11px] whitespace-nowrap">{c.complianceCompletedDate || "-"}</td>
+                      <td className="text-[11px] truncate max-w-[140px]">{c.assignedOfficer}</td>
+                    </tr>
+                  ))}
+                  {complianceFailed.length === 0 && <tr><td colSpan={9} className="text-center py-6 text-xs text-muted-foreground">No failed or overdue compliance.</td></tr>}
+                </tbody>
+              </table>
+              {complianceFailed.length > 10 && (
+                <div className="px-4 py-2 border-t border-border text-[11px] text-muted-foreground">
+                  Showing 10 of {complianceFailed.length} — <Link to="/compliance" className="text-primary hover:underline">view all in Compliance Tracker</Link>
+                </div>
+              )}
             </div>
 
             {/* Quick action tiles */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 mb-5">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-5">
               <Link to="/cases/new" className="govt-card p-4 flex items-center justify-between border-l-4 border-l-primary hover:bg-muted/30 transition-colors">
                 <div className="flex items-center gap-3">
                   <div className="p-2 rounded bg-primary/10"><FileText className="h-4 w-4 text-primary" /></div>
@@ -341,13 +385,6 @@ export default function Dashboard() {
                 <div className="flex items-center gap-3">
                   <div className="p-2 rounded bg-status-warning/10"><Gavel className="h-4 w-4 text-status-warning" /></div>
                   <div><p className="text-sm font-semibold text-foreground">Tomorrow's Hearings</p><p className="text-[10px] text-muted-foreground">{hcHearingsTomorrow.length} listed at HC Telangana</p></div>
-                </div>
-                <ArrowRight className="h-4 w-4 text-muted-foreground" />
-              </Link>
-              <Link to="/cases?closure=Pending" className="govt-card p-4 flex items-center justify-between border-l-4 border-l-status-success hover:bg-muted/30 transition-colors">
-                <div className="flex items-center gap-3">
-                  <div className="p-2 rounded bg-status-success/10"><CheckCircle2 className="h-4 w-4 text-status-success" /></div>
-                  <div><p className="text-sm font-semibold text-foreground">Pending Closures</p><p className="text-[10px] text-muted-foreground">{pendingClosures.length} compliances awaiting</p></div>
                 </div>
                 <ArrowRight className="h-4 w-4 text-muted-foreground" />
               </Link>
