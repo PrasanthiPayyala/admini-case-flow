@@ -193,8 +193,30 @@ export default function Dashboard() {
         const disposed3mo = recent.filter(c => c.status === "Closed" || c.disposed === "Yes").length;
         const disposalRate = recent.length ? Math.round((disposed3mo / recent.length) * 100) : 0;
 
-        // Pending closures = disposed but not closed
-        const pendingClosures = cases.filter(c => c.disposed === "Yes" && !c.closed);
+        // Respondent involvement (active only)
+        const respActive = activeCases.filter(c => c.collectorateInvolvement === "Collectorate as Respondent");
+        const coRespActive = activeCases.filter(c => c.collectorateInvolvement === "Collectorate as Co-Respondent");
+        const respDeptBreakdown = (() => {
+          const m: Record<string, number> = {};
+          respActive.forEach(c => { m[c.department] = (m[c.department] || 0) + 1; });
+          return Object.entries(m).sort((a, b) => b[1] - a[1]).slice(0, 3);
+        })();
+
+        // Compliance — failed / overdue (Pending or Partially Complied)
+        const todayDateStr = REF_DATE.toISOString().split("T")[0];
+        const complianceFailed = cases
+          .filter(c => c.complianceRequired && (c.complianceStatus === "Pending" || c.complianceStatus === "Partially Complied"))
+          .map(c => {
+            const overdue = !!(c.complianceDueDate && c.complianceDueDate < todayDateStr);
+            return { c, overdue };
+          })
+          .sort((a, b) => {
+            if (a.overdue !== b.overdue) return a.overdue ? -1 : 1;
+            return (a.c.complianceDueDate || "9999").localeCompare(b.c.complianceDueDate || "9999");
+          });
+        const compliancePendingCount = complianceFailed.filter(x => x.c.complianceStatus === "Pending").length;
+        const compliancePartialCount = complianceFailed.filter(x => x.c.complianceStatus === "Partially Complied").length;
+        const complianceOverdueCount = complianceFailed.filter(x => x.overdue).length;
 
         // Tomorrow's hearings at HC
         const hcHearingsTomorrow = hearingsTomorrow.filter(h => (h.court || "").toLowerCase().includes("high court"));
