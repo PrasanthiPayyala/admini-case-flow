@@ -1,67 +1,71 @@
-# Plan — Simplify District Collector Dashboard
+# Collector Dashboard — Refinement Plan
 
-Scope: ONLY the Collector view of `src/pages/Dashboard.tsx` (when `dashType === "collector"`). All other role dashboards remain untouched. No routing, role, or workflow changes. No new files (one inline branch is enough).
+Goal: Sharpen the District Collector's dashboard so it monitors exactly what he cares about — Contempt, cases where the Collectorate is a Respondent, and Compliance failures (with the officer last accountable). Remove Disposal Rate. Keep "Requires your attention" as-is.
 
-## Approach
+## What changes
 
-In `Dashboard.tsx`, gate the existing chart-heavy sections so they DO NOT render for `collector`, and render a new dedicated Collector layout instead. All other dashTypes keep current behavior.
+### 1. Hero KPI strip (4 cards → 4 cards, one swapped)
+Replace the **3-Month Disposal Rate** card with a **Collectorate as Respondent** card.
 
-Change the existing flags so Collector is excluded:
-- `showCharts`: remove `"collector"`
-- `showDeptTiles`: remove `"collector"`
-- The "Pending at Level Summary", "Division-wise Cases", "Compliance Summary", "Dept Compliance Table", "Upcoming Hearings + Land Disputes", "Recent Updates + Alerts" blocks — wrap with `dashType !== "collector"` so Collector skips them.
-- Remove the old `showApprovalCards` KPI rows for Collector by adding `&& dashType !== "collector"` (they're replaced by the new structured rows below).
-- Keep `showCollectorCards` block but it will be replaced by the new Section C.
+New 4-card row:
+1. Contempt Cases (unchanged) — red accent, links to `/cases?caseType=Contempt+Case`
+2. Cases — Collectorate as Respondent (NEW) — count of active cases where `collectorateInvolvement === "Collectorate as Respondent"`, with a sub-line `+N as Co-Respondent`. Links to `/cases?involvement=Respondent`.
+3. Hearings Tomorrow (unchanged)
+4. Registered This Month (unchanged, with MoM delta)
 
-Then add a single block `{dashType === "collector" && (...)}` rendered right after the page header containing the new layout below.
+Remove the Disposal Rate progress card entirely.
 
-## New Collector Layout
+### 2. New section: "Compliance — Failed / Overdue"
+Insert a new block directly below the hero cards (above "Requires your attention").
 
-### KPI Row 1 (8 cards, clickable)
-Total Cases · Fresh · Ongoing · Disposed · Closed · Hearings Tomorrow · Counter Pending · Compliance Pending
+Mini-summary row (3 small tiles):
+- Pending — count of `complianceRequired && complianceStatus === "Pending"`
+- Partially Complied — count
+- Overdue — pending/partial where `complianceDueDate < today`
 
-(Disposed = `cases.filter(c => c.disposed === "Yes" && !c.closed)`; Closed = `c.closed === true` or `status === "Closed"`.)
+High-density table (same columns as the screenshot the user shared):
+`Case Number | Title | Court | Order Summary | Department | Compliance Status | Due Date | Completed | Last Officer`
 
-### KPI Row 2 (8 cards, clickable)
-Collectorate as Respondent · Collectorate as Co-Respondent · Directions Pending Action · Action Taken Pending · GP Approval Pending · Collector Approval Pending · Long Pending Cases · Last 7 Days Updates
+Rules:
+- Source: cases where `complianceRequired === true` AND `complianceStatus ∈ {Pending, Partially Complied}`.
+- Sort: overdue first (oldest due date), then nearest due date.
+- Limit: top 10 with a "View all in Compliance Tracker" link → `/compliance`.
+- "Last Officer" = the officer last accountable (use existing `assignedOfficer` field, same as the Compliance Tracker screen shown).
+- Row click → `/cases/:id`.
+- Overdue rows: subtle red left-border + red due-date text. Use existing `StatusBadge` for the status column. No new colors — reuse tokens.
 
-All cards use `<StatsCard href=...>` reusing existing filter URLs already used elsewhere.
+### 3. Respondent quick-glance (optional small panel, same row as Compliance)
+Two compact stat tiles beside the compliance block summary:
+- "As Respondent · Active" with counts grouped by top 3 departments (one-line breakdown).
+- "As Co-Respondent · Active" count.
+Both link into the case list filtered by involvement.
 
-### Section A — Hearings Requiring Attention
-Compact table from `hearings` where date <= today+3 OR overdue & still Scheduled. Columns: Case No · Petitioner · Department · Next Hearing · Days Left · Status. Days-left chip color: red ≤0, orange 1–3, green ≥4. Limit 10 rows. Row click → `/cases/:id`.
+### 4. Keep as-is
+- Contempt alert banner at top
+- "Requires your attention" table
+- "Tomorrow at the High Court" list
+- Header strip with Collector name / timestamp / Export / Print
 
-### Section B — Pending Action Cases
-Active cases where ANY of: `counterFiled !== "Yes"`, `counterFiled === "Yes" && !srNumber`, has open `directions`, `complianceStatus === "Pending"`. Columns: Case No · Department · Pending At · Responsible Officer · Due Date · Priority. Limit 10.
+### 5. Remove
+- 3-Month Rolling Disposal Rate card (and its computation)
+- Any "Pending Closures" quick-tile that referenced disposal flow on the Collector dashboard (keep elsewhere — only removed from Collector view)
 
-### Section C — Collectorate Involvement
-Two side-by-side cards (Respondent / Co-Respondent). Each: total count + top 5 most urgent (sorted by nearest `nextHearingDate`, status not Closed) + "View all" link to filtered list.
+## Final Collector dashboard order (top → bottom)
+1. Contempt alert banner (conditional)
+2. Header strip
+3. Hero KPI row (Contempt · Respondent · Hearings Tomorrow · Registered This Month)
+4. Compliance — Failed / Overdue (summary tiles + 10-row table)
+5. Requires your attention (unchanged)
+6. Tomorrow at the High Court (unchanged)
+7. Quick action tiles (Register · Contempt · HC Hearings — drop "Pending Closures")
 
-### Section D — Department-wise Snapshot
-Compact table over `departments`. Columns: Department · Total · Pending (status != Closed) · Compliance Pending · Hearings This Week (date within next 7 days). Department name links to `/cases?department=...`.
+## Technical notes
+- All work is in `src/pages/Dashboard.tsx`, inside the `isCollector` IIFE block (~line 177 onward). No data model or context changes — fields used (`collectorateInvolvement`, `complianceRequired`, `complianceStatus`, `complianceDueDate`, `complianceCompletedDate`, `assignedOfficer`, `orderSummary`) already exist on `CaseRecord`.
+- Filter scope continues to use `useRoleFilter()` output (`cases`) — Collector role returns all district cases, so behavior is unchanged.
+- Styling: reuse `govt-card`, `govt-table`, `StatusBadge`, semantic tokens (`status-urgent`, `status-warning`, `status-success`). No new tokens.
+- Links: extend existing query-string convention (`?caseType=`, `?involvement=`). CaseList already accepts unknown params gracefully; deep-link filtering for `involvement` can be a follow-up if needed — the navigation target still works.
 
-### Section E — Division-wise Snapshot
-Two compact cards (Bhongir / Choutuppal). Each: Total · Pending · Hearings Upcoming. Click → `/cases?division=...`.
-
-### Section F — Recent Updates (last 7 days activity feed)
-Use `globalAudit` from `useData()` filtered to last 7 days, action in {Hearing Updated, Counter Filed/Approved, Direction Issued, Action Taken Uploaded, Case Disposed, File Closed}. Show timestamp · case no (parsed from `details` `[CASE-ID]` prefix → link) · action · actor/role. Limit 15 rows, scrollable.
-
-If `globalAudit` is sparse, fall back to a derived feed from `cases` sorted by `lastUpdated` desc with their latest `auditTrail` entry.
-
-### Optional single chart
-Keep ONE small "Cases by Status" donut at the top-right of Section D (collapsed height ~180px). No other charts.
-
-## What gets removed for Collector only
-- Big multi-chart blocks (Cases by Type, Court, Mandal, Department bar, Priority bar)
-- Pending-at-Level grid
-- Department tiles grid
-- Active Land Disputes table (land dispute KPI also dropped from primary KPIs per spec)
-- Recent Alerts panel
-- Approval card row & workflow KPI row (their key counts are folded into the new KPI rows)
-
-## Visual language
-Reuse existing `govt-card`, `govt-card-header`, `govt-table`, `StatsCard`, `StatusBadge`. No new design tokens. Strong section headings, compact spacing (`mb-4`), tables `text-xs`. Days-left chip via inline `<span>` with `bg-status-urgent/10 text-status-urgent` (red), `bg-status-warning/10 text-status-warning` (orange), `bg-status-success/10 text-status-success` (green).
-
-## Files touched
-- `src/pages/Dashboard.tsx` — single file edit. Add Collector branch + gate existing sections with `dashType !== "collector"`.
-
-No data, context, route, or role changes.
+## Out of scope
+- Changes to CaseList filter UI for the new `involvement` query param (can be added later if you want the link to auto-filter).
+- Any change to other role dashboards.
+- Any change to seed data.
