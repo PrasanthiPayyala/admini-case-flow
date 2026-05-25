@@ -14,6 +14,7 @@ import {
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from "recharts";
 import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
+import { CollectorCaseAnalytics } from "@/components/dashboard/CollectorCaseAnalytics";
 
 const REF_DATE = new Date();
 
@@ -364,6 +365,9 @@ export default function Dashboard() {
                 </div>
               )}
             </div>
+
+            {/* Total Cases — Court-wise Classification analytics */}
+            <CollectorCaseAnalytics cases={cases} hearings={hearings} />
 
             {/* Quick action tiles */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-5">
