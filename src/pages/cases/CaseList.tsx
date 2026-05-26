@@ -153,15 +153,27 @@ export default function CaseList() {
       if (complianceF === "partial" && c.complianceStatus !== "Partially Complied") return false;
       if (complianceF === "complied" && c.complianceStatus !== "Complied") return false;
       if (complianceF === "na" && c.complianceStatus !== "Not Applicable") return false;
+      if (complianceF === "noncomplied") {
+        // Non-complied = required compliance but not complied
+        if (!c.complianceRequired) return false;
+        if (c.complianceStatus === "Complied") return false;
+      }
     }
     if (instructionsF !== "all" && (c.instructionsFiled || "Pending") !== instructionsF) return false;
-    if (counterF !== "all" && (c.counterFiled || "No") !== counterF) return false;
+    if (counterF !== "all") {
+      if (counterF === "Pending-Open") {
+        if (c.status === "Closed" || c.counterFiled === "Yes") return false;
+      } else if ((c.counterFiled || "No") !== counterF) return false;
+    }
     if (disposedF !== "all" && (c.disposed || "No") !== disposedF) return false;
     if (closedF === "yes" && !c.closed) return false;
     if (closedF === "no" && c.closed) return false;
     if (closedF === "disposed_not_closed" && (c.disposed !== "Yes" || c.closed)) return false;
+    if (courtTypeF !== "all" && c.courtType !== courtTypeF) return false;
+    if (dateFromF && c.filingDate < dateFromF) return false;
+    if (dateToF && c.filingDate > dateToF) return false;
     return true;
-  }), [cases, search, statusF, typeF, courtF, mandalF, deptF, priorityF, collectF, complianceF, landF, divisionF, pendingAtF, instructionsF, counterF, disposedF, closedF]);
+  }), [cases, search, statusF, typeF, courtF, mandalF, deptF, priorityF, collectF, complianceF, landF, divisionF, pendingAtF, instructionsF, counterF, disposedF, closedF, courtTypeF, dateFromF, dateToF]);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const paged = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
@@ -170,10 +182,10 @@ export default function CaseList() {
     setSearch(""); setStatusF("all"); setTypeF("all"); setCourtF("all"); setMandalF("all");
     setDeptF("all"); setPriorityF("all"); setCollectF("all"); setComplianceF("all"); setLandF("all");
     setDivisionF("all"); setPendingAtF("all"); setInstructionsF("all"); setCounterF("all");
-    setDisposedF("all"); setClosedF("all"); setPage(1);
+    setDisposedF("all"); setClosedF("all"); setCourtTypeF("all"); setDateFromF(""); setDateToF(""); setPage(1);
   };
 
-  const hasFilters = statusF !== "all" || typeF !== "all" || courtF !== "all" || mandalF !== "all" || deptF !== "all" || priorityF !== "all" || collectF !== "all" || complianceF !== "all" || landF !== "all" || divisionF !== "all" || pendingAtF !== "all" || instructionsF !== "all" || counterF !== "all" || disposedF !== "all" || closedF !== "all" || search;
+  const hasFilters = statusF !== "all" || typeF !== "all" || courtF !== "all" || mandalF !== "all" || deptF !== "all" || priorityF !== "all" || collectF !== "all" || complianceF !== "all" || landF !== "all" || divisionF !== "all" || pendingAtF !== "all" || instructionsF !== "all" || counterF !== "all" || disposedF !== "all" || closedF !== "all" || courtTypeF !== "all" || dateFromF || dateToF || search;
 
   const exportCsv = () => {
     const headers = ["Sl.No","Department","Case Type","Case No./Year","Title","Petitioner","Respondent","Instructions Filed","Counter Filed","S.R. Number","Next Hearing","Disposed","Compliance","Pending At","Officer","Last Updated"];
