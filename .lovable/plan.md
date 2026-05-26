@@ -1,71 +1,86 @@
-# Collector Dashboard — Refinement Plan
+# Collector Dashboard Enhancements — Implementation Plan
 
-Goal: Sharpen the District Collector's dashboard so it monitors exactly what he cares about — Contempt, cases where the Collectorate is a Respondent, and Compliance failures (with the officer last accountable). Remove Disposal Rate. Keep "Requires your attention" as-is.
+Scope: Incremental additions only. Do NOT redesign existing dashboard. Keep Priority/Attention table and existing structure intact.
 
-## What changes
+---
 
-### 1. Hero KPI strip (4 cards → 4 cards, one swapped)
-Replace the **3-Month Disposal Rate** card with a **Collectorate as Respondent** card.
+## 1. Clickable Summary Cards (Collector Dashboard)
+Add a 3-card row at the top of the existing `CollectorCaseAnalytics` widget (replacing the current internal summary tiles to avoid duplication):
+- **Total Cases** → `/cases?scope=collector`
+- **Disposed Cases** → `/cases?disposed=Yes`
+- **Pending Counter Cases** → `/cases?counterPending=true`
 
-New 4-card row:
-1. Contempt Cases (unchanged) — red accent, links to `/cases?caseType=Contempt+Case`
-2. Cases — Collectorate as Respondent (NEW) — count of active cases where `collectorateInvolvement === "Collectorate as Respondent"`, with a sub-line `+N as Co-Respondent`. Links to `/cases?involvement=Respondent`.
-3. Hearings Tomorrow (unchanged)
-4. Registered This Month (unchanged, with MoM delta)
+All cards honor the active dashboard filters (court, case type, date range) by passing query params.
 
-Remove the Disposal Rate progress card entirely.
+## 2. Dashboard Filters (Collector Dashboard)
+Extend existing filter bar in `CollectorCaseAnalytics` to include:
+- **Court Type** (existing) — derived from `cases[].courtType` union with seed Excel values (WP/WA/CRP/SA/CC court contexts already in data)
+- **Case Type** (existing) — ensure WP, WA, CRP, SA, CC, Contempt Case appear
+- **Date Range** (NEW) — `From` and `To` date inputs, filters by `filingDate`. Reuse existing shadcn datepicker pattern.
 
-### 2. New section: "Compliance — Failed / Overdue"
-Insert a new block directly below the hero cards (above "Requires your attention").
+## 3. Global Date Filter (All Dashboards)
+Create a lightweight `DashboardDateFilter` component placed in the dashboard header strip on `Dashboard.tsx` for ALL roles. It filters case-derived metrics by `filingDate` range. Store state in `Dashboard.tsx` and pass into role-specific blocks via props. Default: empty (no filter).
 
-Mini-summary row (3 small tiles):
-- Pending — count of `complianceRequired && complianceStatus === "Pending"`
-- Partially Complied — count
-- Overdue — pending/partial where `complianceDueDate < today`
+## 4. Court-wise View (already exists)
+The existing `CollectorCaseAnalytics` per-court grouping already shows:
+- Disposed → department-wise Complied / Non-Complied
+- Pending Counter → department-wise Counter Filed / Counter Pending / Next Hearing
 
-High-density table (same columns as the screenshot the user shared):
-`Case Number | Title | Court | Order Summary | Department | Compliance Status | Due Date | Completed | Last Officer`
+Refinements:
+- **Compliance logic update**: A disposed case is `Non-Complied` if `complianceStatus !== "Complied"` AND `complianceRequired === true`. Cases with no compliance required count as Complied (or excluded — choose Complied).
+- **Counter Filed logic**: Already uses `counterFiled === "Yes"`. Keep as-is (interpreted as "at least one counter uploaded").
+- **Department display**: Use primary `department` field — already in place.
+- **Make each department-row count clickable** → links to `/cases?...` with appropriate filter (e.g. `?disposed=Yes&compliance=NonComplied&department=X`).
 
-Rules:
-- Source: cases where `complianceRequired === true` AND `complianceStatus ∈ {Pending, Partially Complied}`.
-- Sort: overdue first (oldest due date), then nearest due date.
-- Limit: top 10 with a "View all in Compliance Tracker" link → `/compliance`.
-- "Last Officer" = the officer last accountable (use existing `assignedOfficer` field, same as the Compliance Tracker screen shown).
-- Row click → `/cases/:id`.
-- Overdue rows: subtle red left-border + red due-date text. Use existing `StatusBadge` for the status column. No new colors — reuse tokens.
+## 5. CaseList Query Param Support
+Update `src/pages/cases/CaseList.tsx` to read & apply these URL params:
+- `disposed=Yes|No`
+- `counterPending=true` (status !== Closed && counterFiled !== Yes)
+- `counterFiled=true`
+- `compliance=Complied|NonComplied|Pending`
+- `department=<name>`
+- `courtType=<name>`
+- `caseType=<name>`
+- `dateFrom`, `dateTo` (filingDate range)
+- `scope=collector` (no extra filter — district level)
 
-### 3. Respondent quick-glance (optional small panel, same row as Compliance)
-Two compact stat tiles beside the compliance block summary:
-- "As Respondent · Active" with counts grouped by top 3 departments (one-line breakdown).
-- "As Co-Respondent · Active" count.
-Both link into the case list filtered by involvement.
+Apply on mount via `useSearchParams` and pre-populate visible filters where possible.
 
-### 4. Keep as-is
-- Contempt alert banner at top
-- "Requires your attention" table
-- "Tomorrow at the High Court" list
-- Header strip with Collector name / timestamp / Export / Print
+## 6. Case Status Master (Super Admin + Legal Cell)
+Create new admin page `src/pages/admin/CaseStatusMaster.tsx`:
+- Lists existing statuses (default + custom) with usage count.
+- Add new status (name, color token).
+- Delete only allowed if usage count = 0.
+- All edits write an `auditLog` entry via DataContext.
+- Visible only to roles: `Super Admin`, `Legal Cell` (existing roles in `permissions.ts`).
+- Add route in `App.tsx` and sidebar entry in `AppSidebar.tsx` under Admin section.
 
-### 5. Remove
-- 3-Month Rolling Disposal Rate card (and its computation)
-- Any "Pending Closures" quick-tile that referenced disposal flow on the Collector dashboard (keep elsewhere — only removed from Collector view)
+Data layer:
+- Extend `DataContext.tsx` with `caseStatuses: string[]` (seeded from existing statuses) + `addCaseStatus`, `deleteCaseStatus`. Persist to `localStorage` (consistent with existing demo persistence layer).
+- Replace hardcoded status dropdown options in `AddCase.tsx` / `EditCase.tsx` / `CaseList.tsx` filter to consume `caseStatuses` from context.
 
-## Final Collector dashboard order (top → bottom)
-1. Contempt alert banner (conditional)
-2. Header strip
-3. Hero KPI row (Contempt · Respondent · Hearings Tomorrow · Registered This Month)
-4. Compliance — Failed / Overdue (summary tiles + 10-row table)
-5. Requires your attention (unchanged)
-6. Tomorrow at the High Court (unchanged)
-7. Quick action tiles (Register · Contempt · HC Hearings — drop "Pending Closures")
+## 7. Out of Scope (explicit)
+- No charts / reports module.
+- No mobile optimization of Collector Dashboard.
+- No redesign of Priority/Attention table.
+- No respondent-assignment workflow for counter filing (deferred).
+- No role hierarchy changes; Collector already shows district-level via existing `useRoleFilter`.
 
-## Technical notes
-- All work is in `src/pages/Dashboard.tsx`, inside the `isCollector` IIFE block (~line 177 onward). No data model or context changes — fields used (`collectorateInvolvement`, `complianceRequired`, `complianceStatus`, `complianceDueDate`, `complianceCompletedDate`, `assignedOfficer`, `orderSummary`) already exist on `CaseRecord`.
-- Filter scope continues to use `useRoleFilter()` output (`cases`) — Collector role returns all district cases, so behavior is unchanged.
-- Styling: reuse `govt-card`, `govt-table`, `StatusBadge`, semantic tokens (`status-urgent`, `status-warning`, `status-success`). No new tokens.
-- Links: extend existing query-string convention (`?caseType=`, `?involvement=`). CaseList already accepts unknown params gracefully; deep-link filtering for `involvement` can be a follow-up if needed — the navigation target still works.
+---
 
-## Out of scope
-- Changes to CaseList filter UI for the new `involvement` query param (can be added later if you want the link to auto-filter).
-- Any change to other role dashboards.
-- Any change to seed data.
+## Technical Touch Points
+- `src/components/dashboard/CollectorCaseAnalytics.tsx` — add date filter, clickable cards, clickable dept rows, refine compliance logic
+- `src/pages/Dashboard.tsx` — add global `DashboardDateFilter` in header for all roles, lift date state, pass to children
+- `src/components/dashboard/DashboardDateFilter.tsx` (NEW) — reusable date-range filter
+- `src/pages/cases/CaseList.tsx` — honor new query params
+- `src/contexts/DataContext.tsx` — add caseStatuses state + actions
+- `src/pages/admin/CaseStatusMaster.tsx` (NEW)
+- `src/App.tsx` — route
+- `src/components/layout/AppSidebar.tsx` — sidebar link (admin only)
+- `src/lib/permissions.ts` — gate Case Status Master to Super Admin + Legal Cell
+
+## Validation
+- Manual click-through: each summary card and each department count opens correctly filtered CaseList.
+- Date filter applies to summary counts and per-court breakdown.
+- Case Status Master: add → appears in AddCase dropdown; delete blocked when in use.
+- Other dashboards unaffected except for the new date filter strip.

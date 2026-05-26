@@ -60,8 +60,15 @@ const APPEALS_KEY = "lcms_appeals";
 const ALERTS_KEY = "lcms_alerts";
 const DOCS_KEY = "lcms_case_docs";
 const AUDIT_KEY = "lcms_audit";
+const STATUSES_KEY = "lcms_case_statuses";
 const SEED_VERSION_KEY = "lcms_seed_version";
 const CURRENT_SEED_VERSION = "2026.05.26-contempt";
+
+const DEFAULT_STATUSES = [
+  "Fresh", "Under Process", "Under Hearing", "Pending",
+  "Hearing Scheduled", "Counter Pending", "Under Review",
+  "Ongoing", "Appealed", "Disposed", "Closed",
+];
 
 // Backfill any legacy/seed records missing the new workflow fields.
 function normaliseCase(c: CaseRecord, idx: number): CaseRecord {
@@ -116,6 +123,7 @@ interface DataContextType {
   alerts: AlertRecord[];
   docs: CaseDoc[];
   globalAudit: AuditEntry[];
+  caseStatuses: string[];
   addCase: (c: CaseRecord) => void;
   updateCase: (id: string, data: Partial<CaseRecord>) => void;
   deleteCase: (id: string) => void;
@@ -135,6 +143,10 @@ interface DataContextType {
   markDisposed: (caseId: string, payload: { disposalDate: string; disposalSummary: string }, actor: string, role: string) => void;
   closeFile: (caseId: string, actor: string, role: string) => { ok: boolean; reason?: string };
   addCaseDocument: (caseId: string, doc: Omit<CaseDoc, "id" | "uploadedAt">, actor: string, role: string) => void;
+  // Case status master
+  addCaseStatus: (status: string, actor: string, role: string) => { ok: boolean; reason?: string };
+  deleteCaseStatus: (status: string, actor: string, role: string) => { ok: boolean; reason?: string };
+  isStatusInUse: (status: string) => boolean;
 }
 
 const DataContext = createContext<DataContextType | null>(null);
@@ -158,6 +170,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
   const [alerts, setAlerts] = useState<AlertRecord[]>(() => load(ALERTS_KEY, seedAlerts as AlertRecord[]));
   const [docs, setDocs] = useState<CaseDoc[]>(() => load(DOCS_KEY, [] as CaseDoc[]));
   const [globalAudit, setGlobalAudit] = useState<AuditEntry[]>(() => load(AUDIT_KEY, [] as AuditEntry[]));
+  const [caseStatuses, setCaseStatuses] = useState<string[]>(() => load(STATUSES_KEY, DEFAULT_STATUSES));
 
   useEffect(() => { localStorage.setItem(CASES_KEY, JSON.stringify(cases)); }, [cases]);
   useEffect(() => { localStorage.setItem(HEARINGS_KEY, JSON.stringify(hearings)); }, [hearings]);
@@ -165,6 +178,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
   useEffect(() => { localStorage.setItem(ALERTS_KEY, JSON.stringify(alerts)); }, [alerts]);
   useEffect(() => { localStorage.setItem(DOCS_KEY, JSON.stringify(docs)); }, [docs]);
   useEffect(() => { localStorage.setItem(AUDIT_KEY, JSON.stringify(globalAudit)); }, [globalAudit]);
+  useEffect(() => { localStorage.setItem(STATUSES_KEY, JSON.stringify(caseStatuses)); }, [caseStatuses]);
 
   const addCase = (c: CaseRecord) => setCases(prev => [c, ...prev]);
   const updateCase = (id: string, data: Partial<CaseRecord>) => setCases(prev => prev.map(c => c.id === id ? { ...c, ...data } : c));
@@ -251,15 +265,40 @@ export function DataProvider({ children }: { children: ReactNode }) {
     writeAudit(caseId, { id: `AUD-${Date.now()}`, ts: new Date().toISOString(), actor, role, action: "Document Uploaded", details: `${d.stage} — ${d.name}` });
   };
 
+  const STATUS_MASTER_ROLES = ["Super Admin", "District Legal Officer"];
+
+  const isStatusInUse: DataContextType["isStatusInUse"] = (status) =>
+    cases.some(c => c.status === status);
+
+  const addCaseStatus: DataContextType["addCaseStatus"] = (status, actor, role) => {
+    if (!STATUS_MASTER_ROLES.includes(role)) return { ok: false, reason: "Only Super Admin and District Legal Officer can manage statuses." };
+    const trimmed = status.trim();
+    if (!trimmed) return { ok: false, reason: "Status name cannot be empty." };
+    if (caseStatuses.some(s => s.toLowerCase() === trimmed.toLowerCase())) return { ok: false, reason: "Status already exists." };
+    setCaseStatuses(prev => [...prev, trimmed]);
+    setGlobalAudit(prev => [{ id: `AUD-${Date.now()}`, ts: new Date().toISOString(), actor, role, action: "Case Status Added", details: `Added status: ${trimmed}` }, ...prev].slice(0, 500));
+    return { ok: true };
+  };
+
+  const deleteCaseStatus: DataContextType["deleteCaseStatus"] = (status, actor, role) => {
+    if (!STATUS_MASTER_ROLES.includes(role)) return { ok: false, reason: "Only Super Admin and District Legal Officer can manage statuses." };
+    if (DEFAULT_STATUSES.includes(status)) return { ok: false, reason: "Default system statuses cannot be deleted." };
+    if (isStatusInUse(status)) return { ok: false, reason: "Status is in use by one or more cases." };
+    setCaseStatuses(prev => prev.filter(s => s !== status));
+    setGlobalAudit(prev => [{ id: `AUD-${Date.now()}`, ts: new Date().toISOString(), actor, role, action: "Case Status Removed", details: `Removed status: ${status}` }, ...prev].slice(0, 500));
+    return { ok: true };
+  };
+
   return (
     <DataContext.Provider value={{
-      cases, hearings, appeals, alerts, docs, globalAudit,
+      cases, hearings, appeals, alerts, docs, globalAudit, caseStatuses,
       addCase, updateCase, deleteCase, addCases,
       addHearing, updateHearing,
       addAppeal, updateAppeal,
       generateCaseId, generateHearingId,
       appendAudit, addDirection, updateDirection, addActionTaken,
       setCounterStatus, markDisposed, closeFile, addCaseDocument,
+      addCaseStatus, deleteCaseStatus, isStatusInUse,
     }}>
       {children}
     </DataContext.Provider>

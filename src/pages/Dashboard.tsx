@@ -15,6 +15,8 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContaine
 import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { CollectorCaseAnalytics } from "@/components/dashboard/CollectorCaseAnalytics";
+import { DashboardDateFilter } from "@/components/dashboard/DashboardDateFilter";
+import { useState, useMemo } from "react";
 
 const REF_DATE = new Date();
 
@@ -26,9 +28,21 @@ export default function Dashboard() {
   const role = currentUser?.role;
   const dashType = getRoleDashboardType(role);
 
-  // Use role-filtered data for all calculations
-  const cases = filteredCases;
-  const hearings = filteredHearings;
+  // Global dashboard date filter (filing date for cases, date for hearings)
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
+
+  // Use role-filtered + date-filtered data for all calculations
+  const cases = useMemo(() => filteredCases.filter(c => {
+    if (dateFrom && c.filingDate < dateFrom) return false;
+    if (dateTo && c.filingDate > dateTo) return false;
+    return true;
+  }), [filteredCases, dateFrom, dateTo]);
+  const hearings = useMemo(() => filteredHearings.filter(h => {
+    if (dateFrom && h.date < dateFrom) return false;
+    if (dateTo && h.date > dateTo) return false;
+    return true;
+  }), [filteredHearings, dateFrom, dateTo]);
 
   const activeCases = cases.filter(c => c.status !== "Closed");
   const freshCases = cases.filter(c => c.status === "Fresh");
@@ -135,6 +149,9 @@ export default function Dashboard() {
           </div>
         }
       />
+
+      {/* Global date filter — applies across all role dashboards */}
+      <DashboardDateFilter from={dateFrom} to={dateTo} onChange={(f, t) => { setDateFrom(f); setDateTo(t); }} />
 
       {/* Super Admin: system stats */}
       {dashType === "superadmin" && (
@@ -367,7 +384,7 @@ export default function Dashboard() {
             </div>
 
             {/* Total Cases — Court-wise Classification analytics */}
-            <CollectorCaseAnalytics cases={cases} hearings={hearings} />
+            <CollectorCaseAnalytics cases={cases} hearings={hearings} dateFrom={dateFrom} dateTo={dateTo} />
 
             {/* Quick action tiles */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-5">

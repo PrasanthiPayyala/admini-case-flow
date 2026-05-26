@@ -30,6 +30,7 @@ import RolesPermissions from "./pages/admin/RolesPermissions";
 import DocumentManagement from "./pages/admin/DocumentManagement";
 import AuditLogs from "./pages/admin/AuditLogs";
 import SettingsPage from "./pages/admin/SettingsPage";
+import CaseStatusMaster from "./pages/admin/CaseStatusMaster";
 import Profile from "./pages/profile/Profile";
 import ChangePassword from "./pages/profile/ChangePassword";
 import NotFound from "./pages/NotFound";
@@ -71,6 +72,7 @@ function AppRoutes() {
       <Route path="/documents" element={<ProtectedRoute><DocumentManagement /></ProtectedRoute>} />
       <Route path="/audit-logs" element={<ProtectedRoute><AuditLogs /></ProtectedRoute>} />
       <Route path="/settings" element={<ProtectedRoute><SettingsPage /></ProtectedRoute>} />
+      <Route path="/case-status-master" element={<ProtectedRoute><CaseStatusMaster /></ProtectedRoute>} />
       <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
       <Route path="/change-password" element={<ProtectedRoute><ChangePassword /></ProtectedRoute>} />
       <Route path="*" element={<NotFound />} />

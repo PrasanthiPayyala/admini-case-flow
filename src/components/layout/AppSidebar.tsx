@@ -29,6 +29,7 @@ const adminNav = [
   { label: "Users", icon: Users, href: "/users" },
   { label: "Roles & Permissions", icon: Shield, href: "/roles" },
   { label: "Documents", icon: FileText, href: "/documents" },
+  { label: "Case Status Master", icon: ShieldCheck, href: "/case-status-master" },
   { label: "Audit Logs", icon: ClipboardList, href: "/audit-logs" },
   { label: "Settings", icon: Settings, href: "/settings" },
 ];

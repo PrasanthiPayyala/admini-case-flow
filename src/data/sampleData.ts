@@ -38,6 +38,7 @@ export const collectotateSections = [
 ];
 
 export const caseTypes = [
+  "WP", "WA", "CRP", "SA", "CC",
   "Writ Petition", "Contempt Case", "Land Dispute", "Revenue Matter", "Civil Suit",
   "Tribunal Matter", "Consumer Matter", "Service Matter",
   "Encroachment Matter", "Compensation Matter", "Compliance Matter"
