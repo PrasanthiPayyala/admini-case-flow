@@ -147,6 +147,7 @@ interface DataContextType {
   addCaseStatus: (status: string, actor: string, role: string) => { ok: boolean; reason?: string };
   deleteCaseStatus: (status: string, actor: string, role: string) => { ok: boolean; reason?: string };
   isStatusInUse: (status: string) => boolean;
+}
 
 const DataContext = createContext<DataContextType | null>(null);
 
