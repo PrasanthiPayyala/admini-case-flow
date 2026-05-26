@@ -64,7 +64,7 @@ export interface Permissions {
 const FULL_MENU = [
   "/", "/cases", "/cases/fresh", "/cases/ongoing", "/cases/closed",
   "/appeals", "/hearings", "/court-liaison", "/compliance",
-  "/alerts", "/reports", "/users", "/roles", "/documents", "/audit-logs",
+  "/alerts", "/reports", "/users", "/roles", "/documents", "/case-status-master", "/audit-logs",
   "/settings", "/profile", "/change-password",
 ];
 
@@ -168,8 +168,8 @@ export function getPermissions(role: AppRole): Permissions {
         canExportReports: true, canBulkUpload: true,
         canUpdateCompliance: true, canUpdateCourtLiaison: true,
         canUploadDocuments: true, canApproveGP: true,
-        visibleSidebarSections: { main: true, admin: false, account: true, departments: true, divisions: true, collectorQuickAccess: true },
-        visibleMenuItems: [...MAIN_MENU, "/audit-logs"],
+        visibleSidebarSections: { main: true, admin: true, account: true, departments: true, divisions: true, collectorQuickAccess: true },
+        visibleMenuItems: [...MAIN_MENU, "/case-status-master", "/audit-logs"],
       });
     case "Section C Officer":
     case "Section D Officer":
