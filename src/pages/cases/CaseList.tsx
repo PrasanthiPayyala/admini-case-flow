@@ -255,8 +255,8 @@ export default function CaseList() {
           <Select value={collectF} onValueChange={v => { setCollectF(v); setPage(1); }}><SelectTrigger className="w-[140px] h-8 text-xs"><SelectValue placeholder="Involvement" /></SelectTrigger>
             <SelectContent><SelectItem value="all">All</SelectItem>{collectorateInvolvementTypes.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent>
           </Select>
-          <Select value={complianceF} onValueChange={v => { setComplianceF(v); setPage(1); }}><SelectTrigger className="w-[120px] h-8 text-xs"><SelectValue placeholder="Compliance" /></SelectTrigger>
-            <SelectContent><SelectItem value="all">All</SelectItem><SelectItem value="pending">Pending</SelectItem><SelectItem value="partial">Partial</SelectItem><SelectItem value="complied">Complied</SelectItem><SelectItem value="na">N/A</SelectItem></SelectContent>
+          <Select value={complianceF} onValueChange={v => { setComplianceF(v); setPage(1); }}><SelectTrigger className="w-[130px] h-8 text-xs"><SelectValue placeholder="Compliance" /></SelectTrigger>
+            <SelectContent><SelectItem value="all">All</SelectItem><SelectItem value="pending">Pending</SelectItem><SelectItem value="partial">Partial</SelectItem><SelectItem value="complied">Complied</SelectItem><SelectItem value="noncomplied">Non-Complied</SelectItem><SelectItem value="na">N/A</SelectItem></SelectContent>
           </Select>
           <Select value={instructionsF} onValueChange={v => { setInstructionsF(v); setPage(1); }}><SelectTrigger className="w-[130px] h-8 text-xs"><SelectValue placeholder="Instructions" /></SelectTrigger>
             <SelectContent><SelectItem value="all">All Instr.</SelectItem><SelectItem value="Yes">Filed</SelectItem><SelectItem value="No">Not Filed</SelectItem><SelectItem value="Pending">Pending</SelectItem></SelectContent>
