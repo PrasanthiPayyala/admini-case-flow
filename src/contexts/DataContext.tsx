@@ -60,8 +60,15 @@ const APPEALS_KEY = "lcms_appeals";
 const ALERTS_KEY = "lcms_alerts";
 const DOCS_KEY = "lcms_case_docs";
 const AUDIT_KEY = "lcms_audit";
+const STATUSES_KEY = "lcms_case_statuses";
 const SEED_VERSION_KEY = "lcms_seed_version";
 const CURRENT_SEED_VERSION = "2026.05.26-contempt";
+
+const DEFAULT_STATUSES = [
+  "Fresh", "Under Process", "Under Hearing", "Pending",
+  "Hearing Scheduled", "Counter Pending", "Under Review",
+  "Ongoing", "Appealed", "Disposed", "Closed",
+];
 
 // Backfill any legacy/seed records missing the new workflow fields.
 function normaliseCase(c: CaseRecord, idx: number): CaseRecord {
@@ -116,6 +123,7 @@ interface DataContextType {
   alerts: AlertRecord[];
   docs: CaseDoc[];
   globalAudit: AuditEntry[];
+  caseStatuses: string[];
   addCase: (c: CaseRecord) => void;
   updateCase: (id: string, data: Partial<CaseRecord>) => void;
   deleteCase: (id: string) => void;
@@ -135,7 +143,10 @@ interface DataContextType {
   markDisposed: (caseId: string, payload: { disposalDate: string; disposalSummary: string }, actor: string, role: string) => void;
   closeFile: (caseId: string, actor: string, role: string) => { ok: boolean; reason?: string };
   addCaseDocument: (caseId: string, doc: Omit<CaseDoc, "id" | "uploadedAt">, actor: string, role: string) => void;
-}
+  // Case status master
+  addCaseStatus: (status: string, actor: string, role: string) => { ok: boolean; reason?: string };
+  deleteCaseStatus: (status: string, actor: string, role: string) => { ok: boolean; reason?: string };
+  isStatusInUse: (status: string) => boolean;
 
 const DataContext = createContext<DataContextType | null>(null);
 
