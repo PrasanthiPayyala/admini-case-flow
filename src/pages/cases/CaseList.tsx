@@ -89,6 +89,9 @@ export default function CaseList() {
   const [counterF, setCounterF] = useState("all");
   const [disposedF, setDisposedF] = useState("all");
   const [closedF, setClosedF] = useState("all");
+  const [courtTypeF, setCourtTypeF] = useState("all");
+  const [dateFromF, setDateFromF] = useState("");
+  const [dateToF, setDateToF] = useState("");
   const [page, setPage] = useState(1);
 
   useEffect(() => {
@@ -104,6 +107,12 @@ export default function CaseList() {
     const cnt = searchParams.get("counter");
     const dis = searchParams.get("disposed");
     const cls = searchParams.get("closed");
+    const ct = searchParams.get("caseType");
+    const courtType = searchParams.get("courtType");
+    const counterPending = searchParams.get("counterPending");
+    const counterFiled = searchParams.get("counterFiled");
+    const dFrom = searchParams.get("dateFrom");
+    const dTo = searchParams.get("dateTo");
     if (s && STATUSES.includes(s)) setStatusF(s);
     if (inv) setCollectF(inv);
     if (land === "true") setLandF("yes");
@@ -111,11 +120,17 @@ export default function CaseList() {
     if (div && DIVISION_NAMES.includes(div)) setDivisionF(div);
     if (gp === "Pending") setPendingAtF("GP Approval");
     if (ca === "Pending") setPendingAtF("Collector Approval");
-    if (comp === "pending") setComplianceF("pending");
+    if (comp) setComplianceF(comp);
     if (ins) setInstructionsF(ins);
     if (cnt) setCounterF(cnt);
     if (dis) setDisposedF(dis);
     if (cls) setClosedF(cls);
+    if (ct) setTypeF(ct);
+    if (courtType) setCourtTypeF(courtType);
+    if (counterPending === "true") setCounterF("Pending-Open");
+    if (counterFiled === "true") setCounterF("Yes");
+    if (dFrom) setDateFromF(dFrom);
+    if (dTo) setDateToF(dTo);
   }, [searchParams]);
 
   const filtered = useMemo(() => cases.filter(c => {
