@@ -1,22 +1,32 @@
 import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { Briefcase, Scale, CheckCircle2, AlertTriangle, FileText, Clock, CalendarDays } from "lucide-react";
+import { Briefcase, Scale, CheckCircle2, AlertTriangle, FileText, Clock, CalendarDays, ArrowRight } from "lucide-react";
 import type { CaseRecord } from "@/data/sampleData";
 import type { HearingRecord } from "@/contexts/DataContext";
 
 interface Props {
   cases: CaseRecord[];
   hearings: HearingRecord[];
+  dateFrom?: string;
+  dateTo?: string;
 }
 
 const ALL = "All";
 
-export function CollectorCaseAnalytics({ cases, hearings }: Props) {
+// Compliance logic: a disposed case is Non-Complied if it required compliance
+// AND its compliance status is anything other than "Complied" (i.e. any direction
+// or compliance item is still pending). Cases that did not require compliance
+// are treated as Complied.
+function isNonComplied(c: CaseRecord) {
+  return !!c.complianceRequired && c.complianceStatus !== "Complied";
+}
+
+export function CollectorCaseAnalytics({ cases, hearings, dateFrom, dateTo }: Props) {
   const courtTypes = useMemo(
     () => Array.from(new Set(cases.map(c => c.courtType).filter(Boolean))).sort(),
     [cases]
   );
-  const caseTypes = useMemo(
+  const caseTypesOptions = useMemo(
     () => Array.from(new Set(cases.map(c => c.caseType).filter(Boolean))).sort(),
     [cases]
   );
@@ -57,10 +67,23 @@ export function CollectorCaseAnalytics({ cases, hearings }: Props) {
     return m;
   }, [hearings, todayStr]);
 
-  const disposedCount = filtered.filter(c => c.disposed === "Yes" || c.status === "Closed").length;
-  const pendingCounterCount = filtered.filter(
-    c => c.status !== "Closed" && c.counterFiled !== "Yes"
-  ).length;
+  const disposedList = filtered.filter(c => c.disposed === "Yes" || c.status === "Closed");
+  const pendingCounterList = filtered.filter(c => c.status !== "Closed" && c.counterFiled !== "Yes");
+
+  // Build query string carrying current filters
+  const baseParams = () => {
+    const p = new URLSearchParams();
+    if (courtType !== ALL) p.set("courtType", courtType);
+    if (caseType !== ALL) p.set("caseType", caseType);
+    if (dateFrom) p.set("dateFrom", dateFrom);
+    if (dateTo) p.set("dateTo", dateTo);
+    return p;
+  };
+  const linkWith = (extra: Record<string, string>) => {
+    const p = baseParams();
+    Object.entries(extra).forEach(([k, v]) => p.set(k, v));
+    return `/cases?${p.toString()}`;
+  };
 
   return (
     <div className="govt-card mb-4">
@@ -87,27 +110,39 @@ export function CollectorCaseAnalytics({ cases, hearings }: Props) {
             className="h-7 text-[11px] rounded border border-border bg-background px-2 focus:outline-none focus:ring-1 focus:ring-primary"
           >
             <option value={ALL}>All Case Types</option>
-            {caseTypes.map(ct => (
+            {caseTypesOptions.map(ct => (
               <option key={ct} value={ct}>{ct}</option>
             ))}
           </select>
         </div>
       </div>
 
-      {/* Summary tiles */}
+      {/* Clickable summary cards */}
       <div className="px-3 pt-3 grid grid-cols-3 gap-2">
-        <div className="text-center p-2 rounded bg-primary/5 border border-primary/20">
-          <p className="text-lg font-bold text-primary">{filtered.length}</p>
-          <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Total Cases</p>
-        </div>
-        <div className="text-center p-2 rounded bg-status-success/10 border border-status-success/20">
-          <p className="text-lg font-bold text-status-success">{disposedCount}</p>
-          <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Disposed</p>
-        </div>
-        <div className="text-center p-2 rounded bg-status-warning/10 border border-status-warning/20">
-          <p className="text-lg font-bold text-status-warning">{pendingCounterCount}</p>
-          <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Pending Counter</p>
-        </div>
+        <Link
+          to={linkWith({})}
+          className="text-center p-3 rounded bg-primary/5 border border-primary/20 hover:border-primary/50 hover:bg-primary/10 transition-colors group"
+        >
+          <p className="text-2xl font-bold text-primary">{filtered.length}</p>
+          <p className="text-[10px] text-muted-foreground uppercase tracking-wider mt-0.5">Total Cases</p>
+          <p className="text-[9px] text-primary/70 mt-1 inline-flex items-center gap-0.5 group-hover:text-primary">View list <ArrowRight className="h-2.5 w-2.5" /></p>
+        </Link>
+        <Link
+          to={linkWith({ disposed: "Yes" })}
+          className="text-center p-3 rounded bg-status-success/10 border border-status-success/20 hover:border-status-success/50 hover:bg-status-success/15 transition-colors group"
+        >
+          <p className="text-2xl font-bold text-status-success">{disposedList.length}</p>
+          <p className="text-[10px] text-muted-foreground uppercase tracking-wider mt-0.5">Disposed Cases</p>
+          <p className="text-[9px] text-status-success/80 mt-1 inline-flex items-center gap-0.5">View list <ArrowRight className="h-2.5 w-2.5" /></p>
+        </Link>
+        <Link
+          to={linkWith({ counterPending: "true" })}
+          className="text-center p-3 rounded bg-status-warning/10 border border-status-warning/20 hover:border-status-warning/50 hover:bg-status-warning/15 transition-colors group"
+        >
+          <p className="text-2xl font-bold text-status-warning">{pendingCounterList.length}</p>
+          <p className="text-[10px] text-muted-foreground uppercase tracking-wider mt-0.5">Pending Counter</p>
+          <p className="text-[9px] text-status-warning/80 mt-1 inline-flex items-center gap-0.5">View list <ArrowRight className="h-2.5 w-2.5" /></p>
+        </Link>
       </div>
 
       {/* Per-court blocks */}
@@ -119,18 +154,16 @@ export function CollectorCaseAnalytics({ cases, hearings }: Props) {
           const disposed = group.filter(c => c.disposed === "Yes" || c.status === "Closed");
           const pendingCounter = group.filter(c => c.status !== "Closed" && c.counterFiled !== "Yes");
 
-          // Disposed: complied / non-complied dept-wise
+          // Disposed: complied / non-complied dept-wise (primary department)
           const dispDept: Record<string, { complied: number; nonComplied: number }> = {};
           disposed.forEach(c => {
             const d = c.department || "Unspecified";
             if (!dispDept[d]) dispDept[d] = { complied: 0, nonComplied: 0 };
-            const isComplied = c.complianceStatus === "Complied" || (!c.complianceRequired);
-            if (isComplied) dispDept[d].complied++;
-            else dispDept[d].nonComplied++;
+            if (isNonComplied(c)) dispDept[d].nonComplied++;
+            else dispDept[d].complied++;
           });
 
-          // Pending counter: counter filed (false here since we only have not-filed) / counter pending dept-wise
-          // For dashboard analytics: also show 'Counter Filed' active cases (filed but case still open)
+          // Counter: filed (active, open) and pending dept-wise
           const counterFiledActive = group.filter(c => c.status !== "Closed" && c.counterFiled === "Yes");
           const counterDept: Record<string, { filed: number; pending: number; nextHearing?: string }> = {};
           [...counterFiledActive, ...pendingCounter].forEach(c => {
@@ -144,6 +177,17 @@ export function CollectorCaseAnalytics({ cases, hearings }: Props) {
             }
           });
 
+          const ctParams = () => {
+            const p = baseParams();
+            if (ct !== "Unspecified") p.set("courtType", ct);
+            return p;
+          };
+          const courtLink = (extra: Record<string, string>) => {
+            const p = ctParams();
+            Object.entries(extra).forEach(([k, v]) => p.set(k, v));
+            return `/cases?${p.toString()}`;
+          };
+
           return (
             <div key={ct} className="border border-border rounded">
               <div className="flex items-center justify-between bg-muted/40 px-3 py-1.5 border-b border-border">
@@ -153,8 +197,8 @@ export function CollectorCaseAnalytics({ cases, hearings }: Props) {
                   <span className="text-[10px] text-muted-foreground">· {group.length} cases</span>
                 </div>
                 <div className="flex gap-3 text-[10px]">
-                  <span className="text-status-success font-medium">Disposed: {disposed.length}</span>
-                  <span className="text-status-warning font-medium">Pending Counter: {pendingCounter.length}</span>
+                  <Link to={courtLink({ disposed: "Yes" })} className="text-status-success font-medium hover:underline">Disposed: {disposed.length}</Link>
+                  <Link to={courtLink({ counterPending: "true" })} className="text-status-warning font-medium hover:underline">Pending Counter: {pendingCounter.length}</Link>
                 </div>
               </div>
 
@@ -184,8 +228,16 @@ export function CollectorCaseAnalytics({ cases, hearings }: Props) {
                           .map(([d, v]) => (
                             <tr key={d}>
                               <td className="text-[11px]">{d}</td>
-                              <td className="text-[11px] text-right text-status-success font-semibold">{v.complied}</td>
-                              <td className="text-[11px] text-right text-status-urgent font-semibold">{v.nonComplied}</td>
+                              <td className="text-[11px] text-right">
+                                {v.complied > 0 ? (
+                                  <Link to={courtLink({ disposed: "Yes", compliance: "complied", department: d })} className="text-status-success font-semibold hover:underline">{v.complied}</Link>
+                                ) : <span className="text-muted-foreground">—</span>}
+                              </td>
+                              <td className="text-[11px] text-right">
+                                {v.nonComplied > 0 ? (
+                                  <Link to={courtLink({ disposed: "Yes", compliance: "noncomplied", department: d })} className="text-status-urgent font-semibold hover:underline">{v.nonComplied}</Link>
+                                ) : <span className="text-muted-foreground">—</span>}
+                              </td>
                             </tr>
                           ))}
                       </tbody>
@@ -219,8 +271,16 @@ export function CollectorCaseAnalytics({ cases, hearings }: Props) {
                           .map(([d, v]) => (
                             <tr key={d}>
                               <td className="text-[11px]">{d}</td>
-                              <td className="text-[11px] text-right text-status-success font-semibold">{v.filed}</td>
-                              <td className="text-[11px] text-right text-status-warning font-semibold">{v.pending}</td>
+                              <td className="text-[11px] text-right">
+                                {v.filed > 0 ? (
+                                  <Link to={courtLink({ counterFiled: "true", department: d })} className="text-status-success font-semibold hover:underline">{v.filed}</Link>
+                                ) : <span className="text-muted-foreground">—</span>}
+                              </td>
+                              <td className="text-[11px] text-right">
+                                {v.pending > 0 ? (
+                                  <Link to={courtLink({ counterPending: "true", department: d })} className="text-status-warning font-semibold hover:underline">{v.pending}</Link>
+                                ) : <span className="text-muted-foreground">—</span>}
+                              </td>
                               <td className="text-[11px] whitespace-nowrap">
                                 {v.nextHearing ? (
                                   <span className="inline-flex items-center gap-1">
@@ -248,8 +308,8 @@ export function CollectorCaseAnalytics({ cases, hearings }: Props) {
           <Clock className="h-3 w-3" />
           Updates live with case &amp; hearing entries
         </span>
-        <Link to="/cases" className="text-primary hover:underline inline-flex items-center gap-0.5">
-          Open full case list <AlertTriangle className="h-3 w-3 opacity-0" />
+        <Link to={linkWith({})} className="text-primary hover:underline inline-flex items-center gap-0.5">
+          Open full case list <ArrowRight className="h-3 w-3" />
         </Link>
       </div>
     </div>
