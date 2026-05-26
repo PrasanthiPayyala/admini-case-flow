@@ -170,6 +170,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
   const [alerts, setAlerts] = useState<AlertRecord[]>(() => load(ALERTS_KEY, seedAlerts as AlertRecord[]));
   const [docs, setDocs] = useState<CaseDoc[]>(() => load(DOCS_KEY, [] as CaseDoc[]));
   const [globalAudit, setGlobalAudit] = useState<AuditEntry[]>(() => load(AUDIT_KEY, [] as AuditEntry[]));
+  const [caseStatuses, setCaseStatuses] = useState<string[]>(() => load(STATUSES_KEY, DEFAULT_STATUSES));
 
   useEffect(() => { localStorage.setItem(CASES_KEY, JSON.stringify(cases)); }, [cases]);
   useEffect(() => { localStorage.setItem(HEARINGS_KEY, JSON.stringify(hearings)); }, [hearings]);
@@ -177,6 +178,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
   useEffect(() => { localStorage.setItem(ALERTS_KEY, JSON.stringify(alerts)); }, [alerts]);
   useEffect(() => { localStorage.setItem(DOCS_KEY, JSON.stringify(docs)); }, [docs]);
   useEffect(() => { localStorage.setItem(AUDIT_KEY, JSON.stringify(globalAudit)); }, [globalAudit]);
+  useEffect(() => { localStorage.setItem(STATUSES_KEY, JSON.stringify(caseStatuses)); }, [caseStatuses]);
 
   const addCase = (c: CaseRecord) => setCases(prev => [c, ...prev]);
   const updateCase = (id: string, data: Partial<CaseRecord>) => setCases(prev => prev.map(c => c.id === id ? { ...c, ...data } : c));
@@ -263,15 +265,40 @@ export function DataProvider({ children }: { children: ReactNode }) {
     writeAudit(caseId, { id: `AUD-${Date.now()}`, ts: new Date().toISOString(), actor, role, action: "Document Uploaded", details: `${d.stage} — ${d.name}` });
   };
 
+  const STATUS_MASTER_ROLES = ["Super Admin", "District Legal Officer"];
+
+  const isStatusInUse: DataContextType["isStatusInUse"] = (status) =>
+    cases.some(c => c.status === status);
+
+  const addCaseStatus: DataContextType["addCaseStatus"] = (status, actor, role) => {
+    if (!STATUS_MASTER_ROLES.includes(role)) return { ok: false, reason: "Only Super Admin and District Legal Officer can manage statuses." };
+    const trimmed = status.trim();
+    if (!trimmed) return { ok: false, reason: "Status name cannot be empty." };
+    if (caseStatuses.some(s => s.toLowerCase() === trimmed.toLowerCase())) return { ok: false, reason: "Status already exists." };
+    setCaseStatuses(prev => [...prev, trimmed]);
+    setGlobalAudit(prev => [{ id: `AUD-${Date.now()}`, ts: new Date().toISOString(), actor, role, action: "Case Status Added", details: `Added status: ${trimmed}` }, ...prev].slice(0, 500));
+    return { ok: true };
+  };
+
+  const deleteCaseStatus: DataContextType["deleteCaseStatus"] = (status, actor, role) => {
+    if (!STATUS_MASTER_ROLES.includes(role)) return { ok: false, reason: "Only Super Admin and District Legal Officer can manage statuses." };
+    if (DEFAULT_STATUSES.includes(status)) return { ok: false, reason: "Default system statuses cannot be deleted." };
+    if (isStatusInUse(status)) return { ok: false, reason: "Status is in use by one or more cases." };
+    setCaseStatuses(prev => prev.filter(s => s !== status));
+    setGlobalAudit(prev => [{ id: `AUD-${Date.now()}`, ts: new Date().toISOString(), actor, role, action: "Case Status Removed", details: `Removed status: ${status}` }, ...prev].slice(0, 500));
+    return { ok: true };
+  };
+
   return (
     <DataContext.Provider value={{
-      cases, hearings, appeals, alerts, docs, globalAudit,
+      cases, hearings, appeals, alerts, docs, globalAudit, caseStatuses,
       addCase, updateCase, deleteCase, addCases,
       addHearing, updateHearing,
       addAppeal, updateAppeal,
       generateCaseId, generateHearingId,
       appendAudit, addDirection, updateDirection, addActionTaken,
       setCounterStatus, markDisposed, closeFile, addCaseDocument,
+      addCaseStatus, deleteCaseStatus, isStatusInUse,
     }}>
       {children}
     </DataContext.Provider>
