@@ -106,6 +106,7 @@ The current build is a **fully-functional UI demo** backed by `localStorage`, de
 - **Roles & Permissions** — matrix view of 25+ roles
 - **Documents** — central document library
 - **Audit Logs** — global, last 500 actions across the system
+- **Case Status Master** — Super Admin & District Legal Officer can add/remove custom case statuses; system defaults are protected, statuses in use cannot be deleted, and all changes are written to the audit log. New statuses automatically appear in case-status dropdowns
 - **Settings** — system configuration
 
 ### 10. Profile
