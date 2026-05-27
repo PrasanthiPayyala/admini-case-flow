@@ -22,6 +22,7 @@ import AppealList from "./pages/appeals/AppealList";
 import AddAppeal from "./pages/appeals/AddAppeal";
 import HearingList from "./pages/hearings/HearingList";
 import CourtLiaisonUpdates from "./pages/hearings/CourtLiaisonUpdates";
+import DailyHearingDesk from "./pages/hearings/DailyHearingDesk";
 import ComplianceTracker from "./pages/compliance/ComplianceTracker";
 import AlertCenter from "./pages/alerts/AlertCenter";
 import ReportsPage from "./pages/reports/ReportsPage";
@@ -64,6 +65,7 @@ function AppRoutes() {
       <Route path="/appeals/new" element={<ProtectedRoute><AddAppeal /></ProtectedRoute>} />
       <Route path="/hearings" element={<ProtectedRoute><HearingList /></ProtectedRoute>} />
       <Route path="/court-liaison" element={<ProtectedRoute><CourtLiaisonUpdates /></ProtectedRoute>} />
+      <Route path="/daily-hearing-desk" element={<ProtectedRoute><DailyHearingDesk /></ProtectedRoute>} />
       <Route path="/compliance" element={<ProtectedRoute><ComplianceTracker /></ProtectedRoute>} />
       <Route path="/alerts" element={<ProtectedRoute><AlertCenter /></ProtectedRoute>} />
       <Route path="/reports" element={<ProtectedRoute><ReportsPage /></ProtectedRoute>} />
