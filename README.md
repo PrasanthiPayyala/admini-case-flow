@@ -61,9 +61,16 @@ The current build is a **fully-functional UI demo** backed by `localStorage`, de
 - Per-user `lastLogin` tracking
 
 ### 2. Dashboards (Role-Aware)
-- **District Collector Dashboard** — simplified, executive, summary-first: district-wide visibility, urgent hearings, pending-action matters, and collectorate-involvement cases. Action-oriented alert/table-driven layout (not an operational processing desk).
-- **Other Role Dashboards** — 12+ clickable KPI cards (Fresh, Ongoing, Closed, Land Disputes, Service Matters, Contempt, Pending Counters, Upcoming Hearings, Overdue Compliance, etc.) with live charts (status / court / mandal / department / priority mix).
-- Scoping: RDO sees division-wide, Department Nodal Officer sees department-only, Mandal-Level User sees mandal-only.
+- **District Collector Dashboard** — executive, summary-first view tailored for monitoring. Includes:
+  - **Collector Case Analytics** widget with clickable summary cards (**Total Cases**, **Disposed**, **Pending Counter**) that drill into a filtered `/cases` view
+  - Dashboard-level filters: **Court Type**, **Case Type**, and **Date Range** (filing date)
+  - **Court-wise classification** table with clickable Complied / Non-Complied and Counter Filed / Pending counts
+  - **Compliance Failed** and **Requires Your Attention** panels with "pending at" level visibility
+  - Disposal Rate intentionally excluded — Collector focus is monitoring, not throughput
+- **Global Date Filter** in the dashboard header (all roles) — scopes case-derived metrics by filing date
+- **Other Role Dashboards** — 12+ clickable KPI cards (Fresh, Ongoing, Closed, Land Disputes, Service Matters, Contempt, Pending Counters, Upcoming Hearings, Overdue Compliance, etc.) with live charts (status / court / mandal / department / priority mix)
+- Scoping: RDO sees division-wide, Department Nodal Officer sees department-only, Mandal-Level User sees mandal-only
+
 
 ### 3. Case Management
 - **Case List** — high-density operational table with Petitioner/Respondent + N badge for multi-party, urgency colour-coding (Red ≤0d, Orange 1–3d, Green 4d+)
@@ -99,6 +106,7 @@ The current build is a **fully-functional UI demo** backed by `localStorage`, de
 - **Roles & Permissions** — matrix view of 25+ roles
 - **Documents** — central document library
 - **Audit Logs** — global, last 500 actions across the system
+- **Case Status Master** — Super Admin & District Legal Officer can add/remove custom case statuses; system defaults are protected, statuses in use cannot be deleted, and all changes are written to the audit log. New statuses automatically appear in case-status dropdowns
 - **Settings** — system configuration
 
 ### 10. Profile
@@ -220,7 +228,9 @@ Registration → Assignment (Officer / Department)
 ```
 
 ### Case Statuses
-`Fresh` · `Ongoing` · `Hearing Scheduled` · `Counter Pending` · `Under Process` · `Under Hearing` · `Pending` · `Disposed` · `Closed` · `Appealed`.
+`Fresh` · `Ongoing` · `Hearing Scheduled` · `Counter Pending` · `Under Process` · `Under Hearing` · `Pending` · `Under Review` · `Disposed` · `Closed` · `Appealed`.
+
+Additional statuses can be added at runtime via **Admin → Case Status Master** (Super Admin & DLO only).
 
 ### Pending-At-Level States
 `Department` · `GP Approval` · `Collector Approval` · `Counter Filing` · `Compliance` · `Disposed` · `Closed`.
@@ -297,6 +307,7 @@ The demo uses browser `localStorage` to simulate a backend. Keys:
 | `lcms_alerts` | All alerts |
 | `lcms_case_docs` | Uploaded documents |
 | `lcms_audit` | Global audit ledger (last 500) |
+| `lcms_case_statuses` | Custom case statuses managed via Case Status Master |
 | `lcms_seed_version` | Seed version guard |
 
 To **reset the demo to factory state**: clear site data (DevTools → Application → Storage → Clear site data) and reload.
