@@ -61,9 +61,16 @@ The current build is a **fully-functional UI demo** backed by `localStorage`, de
 - Per-user `lastLogin` tracking
 
 ### 2. Dashboards (Role-Aware)
-- **District Collector Dashboard** — simplified, executive, summary-first: district-wide visibility, urgent hearings, pending-action matters, and collectorate-involvement cases. Action-oriented alert/table-driven layout (not an operational processing desk).
-- **Other Role Dashboards** — 12+ clickable KPI cards (Fresh, Ongoing, Closed, Land Disputes, Service Matters, Contempt, Pending Counters, Upcoming Hearings, Overdue Compliance, etc.) with live charts (status / court / mandal / department / priority mix).
-- Scoping: RDO sees division-wide, Department Nodal Officer sees department-only, Mandal-Level User sees mandal-only.
+- **District Collector Dashboard** — executive, summary-first view tailored for monitoring. Includes:
+  - **Collector Case Analytics** widget with clickable summary cards (**Total Cases**, **Disposed**, **Pending Counter**) that drill into a filtered `/cases` view
+  - Dashboard-level filters: **Court Type**, **Case Type**, and **Date Range** (filing date)
+  - **Court-wise classification** table with clickable Complied / Non-Complied and Counter Filed / Pending counts
+  - **Compliance Failed** and **Requires Your Attention** panels with "pending at" level visibility
+  - Disposal Rate intentionally excluded — Collector focus is monitoring, not throughput
+- **Global Date Filter** in the dashboard header (all roles) — scopes case-derived metrics by filing date
+- **Other Role Dashboards** — 12+ clickable KPI cards (Fresh, Ongoing, Closed, Land Disputes, Service Matters, Contempt, Pending Counters, Upcoming Hearings, Overdue Compliance, etc.) with live charts (status / court / mandal / department / priority mix)
+- Scoping: RDO sees division-wide, Department Nodal Officer sees department-only, Mandal-Level User sees mandal-only
+
 
 ### 3. Case Management
 - **Case List** — high-density operational table with Petitioner/Respondent + N badge for multi-party, urgency colour-coding (Red ≤0d, Orange 1–3d, Green 4d+)
