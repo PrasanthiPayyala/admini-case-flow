@@ -30,7 +30,7 @@ const tomorrowStr = () => { const t = new Date(); t.setDate(t.getDate() + 1); re
 
 export default function DailyHearingDesk() {
   const { hearings, cases, updateHearing, updateCase, markDisposed } = useData();
-  const { user } = useAuth();
+  const { currentUser } = useAuth();
   const { toast } = useToast();
 
   const [tab, setTab] = useState<TabKey>("today");
@@ -151,7 +151,7 @@ export default function DailyHearingDesk() {
       markDisposed(selC.id, {
         disposalDate: form.hearingDate || selH.date,
         disposalSummary: form.orderSummary || form.remarks || `${form.outcome} at ${selH.court}`,
-      }, user?.name || "HC Liaison Officer", user?.role || "High Court Representative Officer");
+      }, currentUser?.name || "HC Liaison Officer", currentUser?.role || "High Court Representative Officer");
     } else if (form.outcome) {
       caseUpdates.status = "Ongoing";
     }
@@ -195,9 +195,9 @@ export default function DailyHearingDesk() {
     <AppLayout>
       <PageHeader
         title="Court Liaison – Daily Hearing Desk"
-        subtitle="Quick daily update screen for High Court hearing outcomes and next actions"
         breadcrumbs={[{ label: "Home", href: "/" }, { label: "Hearings", href: "/hearings" }, { label: "Daily Hearing Desk" }]}
       />
+      <p className="text-xs text-muted-foreground -mt-3 mb-4">Quick daily update screen for High Court hearing outcomes and next actions</p>
 
       {/* Filters */}
       <div className="govt-card p-3 mb-4 flex flex-wrap gap-2 items-end">
