@@ -307,6 +307,7 @@ The demo uses browser `localStorage` to simulate a backend. Keys:
 | `lcms_alerts` | All alerts |
 | `lcms_case_docs` | Uploaded documents |
 | `lcms_audit` | Global audit ledger (last 500) |
+| `lcms_case_statuses` | Custom case statuses managed via Case Status Master |
 | `lcms_seed_version` | Seed version guard |
 
 To **reset the demo to factory state**: clear site data (DevTools → Application → Storage → Clear site data) and reload.
