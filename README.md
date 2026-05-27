@@ -228,7 +228,9 @@ Registration → Assignment (Officer / Department)
 ```
 
 ### Case Statuses
-`Fresh` · `Ongoing` · `Hearing Scheduled` · `Counter Pending` · `Under Process` · `Under Hearing` · `Pending` · `Disposed` · `Closed` · `Appealed`.
+`Fresh` · `Ongoing` · `Hearing Scheduled` · `Counter Pending` · `Under Process` · `Under Hearing` · `Pending` · `Under Review` · `Disposed` · `Closed` · `Appealed`.
+
+Additional statuses can be added at runtime via **Admin → Case Status Master** (Super Admin & DLO only).
 
 ### Pending-At-Level States
 `Department` · `GP Approval` · `Collector Approval` · `Counter Filing` · `Compliance` · `Disposed` · `Closed`.
