@@ -153,6 +153,27 @@ export default function Dashboard() {
       {/* Global date filter — applies across all role dashboards */}
       <DashboardDateFilter from={dateFrom} to={dateTo} onChange={(f, t) => { setDateFrom(f); setDateTo(t); }} />
 
+      {/* Common: "As Respondent" summary card — visible on every officer dashboard */}
+      {dashType !== "default" && (() => {
+        const respondentCases = cases.filter(
+          c => c.collectorateInvolvement === "Collectorate as Respondent"
+            || c.collectorateInvolvement === "Collectorate as Co-Respondent"
+        );
+        const respActiveCount = respondentCases.filter(c => c.status !== "Closed").length;
+        return (
+          <div className="mb-4 grid grid-cols-1 md:grid-cols-3 gap-2.5">
+            <StatsCard
+              title="As Respondent"
+              value={respondentCases.length}
+              icon={ShieldCheck}
+              subtitle={`${respActiveCount} active · ${scopeLabel}`}
+              href="/cases?asRespondent=true"
+              accent="warning"
+            />
+          </div>
+        );
+      })()}
+
       {/* Super Admin: system stats */}
       {dashType === "superadmin" && (
         <div className="grid grid-cols-2 md:grid-cols-4 gap-2.5 mb-4">
