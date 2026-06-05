@@ -146,7 +146,11 @@ export default function CaseList() {
     if (mandalF !== "all" && c.mandal !== mandalF) return false;
     if (deptF !== "all" && c.department !== deptF) return false;
     if (priorityF !== "all" && c.priority !== priorityF) return false;
-    if (collectF !== "all" && c.collectorateInvolvement !== collectF) return false;
+    if (collectF !== "all") {
+      if (collectF === "AsRespondent") {
+        if (c.collectorateInvolvement !== "Collectorate as Respondent" && c.collectorateInvolvement !== "Collectorate as Co-Respondent") return false;
+      } else if (c.collectorateInvolvement !== collectF) return false;
+    }
     if (divisionF !== "all" && c.division !== divisionF) return false;
     if (pendingAtF !== "all" && c.pendingAtLevel !== pendingAtF) return false;
     if (landF === "yes" && !c.landDisputeFlag) return false;
