@@ -111,8 +111,10 @@ export default function CaseList() {
     const courtType = searchParams.get("courtType");
     const counterPending = searchParams.get("counterPending");
     const counterFiled = searchParams.get("counterFiled");
+    const asResp = searchParams.get("asRespondent");
     const dFrom = searchParams.get("dateFrom");
     const dTo = searchParams.get("dateTo");
+    if (asResp === "true") setCollectF("AsRespondent");
     if (s && STATUSES.includes(s)) setStatusF(s);
     if (inv) setCollectF(inv);
     if (land === "true") setLandF("yes");
