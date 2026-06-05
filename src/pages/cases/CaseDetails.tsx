@@ -218,12 +218,69 @@ export default function CaseDetails() {
             </div>
           </div>
 
+          {/* Petition Details */}
+          <div className="govt-section-card p-4">
+            <h3 className="text-xs font-semibold text-foreground mb-3 flex items-center gap-1.5"><FileText className="h-3.5 w-3.5" />Petition Details</h3>
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+              <DetailField label="Date of Filing" value={caseData.filingDate} />
+              <DetailField label="Date of Listing" value={caseData.dateOfListing} />
+              <DetailField label="Affidavit" value={caseData.affidavitDoc?.name || "—"} />
+              <DetailField label="Respondent Department" value={caseData.respondentDepartment} />
+              <DetailField label="Respondent Office" value={caseData.respondentOfficeName} />
+              <DetailField label="Respondent Name" value={caseData.respondentName} />
+            </div>
+            {caseData.prayer && (
+              <div className="mt-3 bg-muted/30 rounded p-3">
+                <p className="detail-label">Prayer of the Petitioner</p>
+                <p className="text-xs">{caseData.prayer}</p>
+              </div>
+            )}
+          </div>
+
           {/* Subject & Remarks */}
           <div className="govt-card p-4">
             <h3 className="text-xs font-semibold text-foreground mb-2">Subject & Remarks</h3>
             <p className="text-xs text-foreground mb-2">{caseData.subject}</p>
             {caseData.remarks && <p className="text-xs text-muted-foreground italic border-t border-border pt-2 mt-2">{caseData.remarks}</p>}
           </div>
+
+          {/* Interim Order */}
+          {(caseData.interimOrder?.date || caseData.interimOrder?.directionToOfficer || caseData.interimOrder?.doc) && (
+            <div className="govt-section-card p-4 bg-amber-50/30 border-amber-200">
+              <h3 className="text-xs font-semibold text-foreground mb-3 flex items-center gap-1.5"><ClipboardList className="h-3.5 w-3.5" />Interim Order</h3>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                <DetailField label="Date of Interim Order" value={caseData.interimOrder?.date} />
+                <DetailField label="Disposal Period" value={caseData.interimOrder?.disposalPeriod} />
+                <DetailField label="Compliance" value={<StatusBadge value={caseData.interimOrder?.compliance || "Not Applicable"} />} />
+                <DetailField label="Document" value={caseData.interimOrder?.doc?.name || "—"} />
+              </div>
+              {caseData.interimOrder?.directionToOfficer && (
+                <div className="mt-3 bg-background rounded p-2 text-xs">
+                  <p className="detail-label">Direction to Officer</p>
+                  <p>{caseData.interimOrder.directionToOfficer}</p>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Final Order */}
+          {(caseData.finalOrder?.date || caseData.finalOrder?.directionsToOfficer || caseData.finalOrder?.doc) && (
+            <div className="govt-section-card p-4 bg-emerald-50/30 border-emerald-200">
+              <h3 className="text-xs font-semibold text-foreground mb-3 flex items-center gap-1.5"><Gavel className="h-3.5 w-3.5" />Final Order</h3>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                <DetailField label="Date of Final Order" value={caseData.finalOrder?.date} />
+                <DetailField label="Period for Disposal" value={caseData.finalOrder?.periodForDisposal} />
+                <DetailField label="Compliance of Orders" value={<StatusBadge value={caseData.finalOrder?.complianceOfOrders || caseData.complianceOfOrders || "Not Applicable"} />} />
+                <DetailField label="Document" value={caseData.finalOrder?.doc?.name || "—"} />
+              </div>
+              {caseData.finalOrder?.directionsToOfficer && (
+                <div className="mt-3 bg-background rounded p-2 text-xs">
+                  <p className="detail-label">Directions to Officer</p>
+                  <p>{caseData.finalOrder.directionsToOfficer}</p>
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Approval Workflow Pipeline */}
           <div className="govt-section-card p-4">
@@ -245,9 +302,10 @@ export default function CaseDetails() {
             )}
 
             {/* Government workflow status row */}
-            <div className="grid grid-cols-2 md:grid-cols-5 gap-2 mb-3 text-xs">
+            <div className="grid grid-cols-2 md:grid-cols-6 gap-2 mb-3 text-xs">
               <div className="bg-muted/40 rounded p-2"><span className="text-[10px] text-muted-foreground">Instructions Filed</span><p className="font-semibold">{caseData.instructionsFiled || "-"}</p></div>
               <div className="bg-muted/40 rounded p-2"><span className="text-[10px] text-muted-foreground">Counter Filed</span><p className="font-semibold">{caseData.counterFiled || "-"}</p></div>
+              <div className="bg-muted/40 rounded p-2"><span className="text-[10px] text-muted-foreground">Counter Filing Date</span><p className="font-semibold">{caseData.counterFilingDate || "—"}</p></div>
               <div className="bg-muted/40 rounded p-2"><span className="text-[10px] text-muted-foreground">S.R. Number</span><p className="font-semibold">{caseData.srNumber || "—"}</p></div>
               <div className="bg-muted/40 rounded p-2"><span className="text-[10px] text-muted-foreground">Disposed</span><p className="font-semibold">{caseData.disposed || "No"}</p></div>
               <div className="bg-muted/40 rounded p-2"><span className="text-[10px] text-muted-foreground">File Closed</span><p className="font-semibold">{caseData.closed ? `Yes (${caseData.closedAt})` : "No"}</p></div>
@@ -270,7 +328,7 @@ export default function CaseDetails() {
               )}
               {permissions?.canApproveCollector && caseData.collectorApprovalStatus === "Pending" && (
                 <Button size="sm" onClick={() => {
-                  setCounterStatus(caseData.id, { collectorApprovalStatus: "Approved", counterDraftStatus: "Filed", counterFiled: "Yes", pendingAtLevel: "Hearing Update" }, actorName, actorRole, "Collector Approved & Counter Filed");
+                  setCounterStatus(caseData.id, { collectorApprovalStatus: "Approved", counterDraftStatus: "Filed", counterFiled: "Yes", counterFilingDate: caseData.counterFilingDate || new Date().toISOString().slice(0,10), pendingAtLevel: "Hearing Update" }, actorName, actorRole, "Collector Approved & Counter Filed");
                   toast({ title: "Collector Approval granted; counter marked filed" });
                 }}>
                   <CheckCircle2 className="h-3.5 w-3.5 mr-1.5" />Collector Approve & File

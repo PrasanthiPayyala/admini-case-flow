@@ -38,7 +38,8 @@ export const collectotateSections = [
 ];
 
 export const caseTypes = [
-  "Writ Petition", "Land Dispute", "Revenue Matter", "Civil Suit",
+  "WP", "WA", "CRP", "SA", "CC",
+  "Writ Petition", "Contempt Case", "Land Dispute", "Revenue Matter", "Civil Suit",
   "Tribunal Matter", "Consumer Matter", "Service Matter",
   "Encroachment Matter", "Compensation Matter", "Compliance Matter"
 ];
@@ -73,6 +74,12 @@ export const natureOfCaseOptions = [
 ];
 
 export const complianceStatuses = ["Not Applicable", "Pending", "Partially Complied", "Complied"];
+
+export const caseStatuses = [
+  "Fresh", "Under Process", "Under Hearing", "Pending",
+  "Hearing Scheduled", "Counter Pending", "Under Review",
+  "Ongoing", "Appealed", "Disposed", "Closed"
+];
 
 export const pendingAtLevels = [
   "Department", "GP Approval", "Collector Approval", "Counter Filing",
@@ -192,6 +199,29 @@ export interface CaseRecord {
   closedBy?: string;
   closedAt?: string;
   auditTrail?: AuditEntry[];
+  // Extended workflow fields (additive)
+  dateOfListing?: string;
+  prayer?: string;
+  respondentDepartment?: string;
+  respondentOfficeName?: string;
+  respondentName?: string;
+  affidavitDoc?: { name: string; uploadedBy: string; uploadedAt: string } | null;
+  counterFilingDate?: string;
+  complianceOfOrders?: "Not Applicable" | "Pending" | "Partially Complied" | "Complied";
+  interimOrder?: {
+    date?: string;
+    directionToOfficer?: string;
+    disposalPeriod?: string;
+    compliance?: "Not Applicable" | "Pending" | "Partially Complied" | "Complied";
+    doc?: { name: string; uploadedBy: string; uploadedAt: string } | null;
+  };
+  finalOrder?: {
+    date?: string;
+    directionsToOfficer?: string;
+    periodForDisposal?: string;
+    complianceOfOrders?: "Not Applicable" | "Pending" | "Partially Complied" | "Complied";
+    doc?: { name: string; uploadedBy: string; uploadedAt: string } | null;
+  };
 }
 
 export function caseNoYear(c: Pick<CaseRecord, "caseNumber" | "caseYear" | "filingYear">): string {
@@ -422,7 +452,7 @@ export const cases: CaseRecord[] = [
   }),
   makeCase({
     id: "LCMS/YBG/2024/009", caseNumber: "WP 16789/2024", title: "Writ - Mutation Delay, Addagudur",
-    court: "Telangana High Court", courtType: "High Court", caseType: "Writ Petition",
+    court: "Telangana High Court", courtType: "High Court", caseType: "Contempt Case",
     petitioner: "A. Narayana Swamy", respondent: "District Collector, Yadadri Bhuvanagiri",
     coRespondents: ["Tahsildar, Addagudur", "Survey Department"],
     department: "Land Records", mandal: "Addagudur", filingDate: "2024-03-15", filingYear: "2024",
@@ -609,7 +639,7 @@ export const cases: CaseRecord[] = [
   }),
   makeCase({
     id: "LCMS/YBG/2025/020", caseNumber: "WP 3456/2025", title: "Land Acquisition Stay - NH Expansion, Choutuppal",
-    court: "Telangana High Court", courtType: "High Court", caseType: "Writ Petition",
+    court: "Telangana High Court", courtType: "High Court", caseType: "Contempt Case",
     petitioner: "Local Resident Welfare Association", respondent: "District Collector, Yadadri Bhuvanagiri",
     coRespondents: ["Roads & Buildings Division Officer", "Revenue Divisional Officer"],
     department: "Roads & Buildings", mandal: "Choutuppal", filingDate: "2025-02-20", filingYear: "2025",
@@ -905,7 +935,7 @@ export const cases: CaseRecord[] = [
   }),
   makeCase({
     id: "LCMS/YBG/2023/101", caseNumber: "WP 1001/2023", title: "Challenge to district administrative order - Bhongir",
-    court: "Telangana High Court", courtType: "High Court", caseType: "Writ Petition",
+    court: "Telangana High Court", courtType: "High Court", caseType: "Contempt Case",
     petitioner: "S. Krishna Murthy", respondent: "District Collector, Yadadri Bhuvanagiri",
     coRespondents: ["Tahsildar, Bhongir", "Survey & Settlement Officer", "Revenue Divisional Officer"],
     department: "Collectorate Legal Cell", mandal: "Bhongir", filingDate: "2023-01-01", filingYear: "2023",

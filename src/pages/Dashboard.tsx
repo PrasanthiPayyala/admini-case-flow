@@ -14,20 +14,35 @@ import {
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from "recharts";
 import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
+import { CollectorCaseAnalytics } from "@/components/dashboard/CollectorCaseAnalytics";
+import { DashboardDateFilter } from "@/components/dashboard/DashboardDateFilter";
+import { useState, useMemo } from "react";
 
 const REF_DATE = new Date();
 
 export default function Dashboard() {
-  const { cases: allCases, hearings: allHearings, alerts, appeals } = useData();
+  const { cases: allCases, hearings: allHearings, alerts, appeals, globalAudit } = useData();
   const { currentUser, permissions, users } = useAuth();
   const { filteredCases, filteredHearings, scopeLabel } = useRoleFilter();
   const navigate = useNavigate();
   const role = currentUser?.role;
   const dashType = getRoleDashboardType(role);
 
-  // Use role-filtered data for all calculations
-  const cases = filteredCases;
-  const hearings = filteredHearings;
+  // Global dashboard date filter (filing date for cases, date for hearings)
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
+
+  // Use role-filtered + date-filtered data for all calculations
+  const cases = useMemo(() => filteredCases.filter(c => {
+    if (dateFrom && c.filingDate < dateFrom) return false;
+    if (dateTo && c.filingDate > dateTo) return false;
+    return true;
+  }), [filteredCases, dateFrom, dateTo]);
+  const hearings = useMemo(() => filteredHearings.filter(h => {
+    if (dateFrom && h.date < dateFrom) return false;
+    if (dateTo && h.date > dateTo) return false;
+    return true;
+  }), [filteredHearings, dateFrom, dateTo]);
 
   const activeCases = cases.filter(c => c.status !== "Closed");
   const freshCases = cases.filter(c => c.status === "Fresh");
@@ -81,10 +96,11 @@ export default function Dashboard() {
     }
   })();
 
-  const showCharts = ["superadmin", "admin", "collector", "legal", "addlcollector", "dro", "readonly"].includes(dashType);
-  const showDeptTiles = ["superadmin", "admin", "collector", "legal", "addlcollector", "dro", "readonly"].includes(dashType);
-  const showCollectorCards = dashType === "collector";
-  const showApprovalCards = ["collector", "legal", "admin", "superadmin", "addlcollector", "dro"].includes(dashType);
+  const isCollector = dashType === "collector";
+  const showCharts = !isCollector && ["superadmin", "admin", "legal", "addlcollector", "dro", "readonly"].includes(dashType);
+  const showDeptTiles = !isCollector && ["superadmin", "admin", "legal", "addlcollector", "dro", "readonly"].includes(dashType);
+  const showCollectorCards = false;
+  const showApprovalCards = !isCollector && ["legal", "admin", "superadmin", "addlcollector", "dro"].includes(dashType);
 
   // Chart data
   const statusData = [
@@ -134,6 +150,30 @@ export default function Dashboard() {
         }
       />
 
+      {/* Global date filter — applies across all role dashboards */}
+      <DashboardDateFilter from={dateFrom} to={dateTo} onChange={(f, t) => { setDateFrom(f); setDateTo(t); }} />
+
+      {/* Common: "As Respondent" summary card — visible on every officer dashboard */}
+      {dashType !== "default" && (() => {
+        const respondentCases = cases.filter(
+          c => c.collectorateInvolvement === "Collectorate as Respondent"
+            || c.collectorateInvolvement === "Collectorate as Co-Respondent"
+        );
+        const respActiveCount = respondentCases.filter(c => c.status !== "Closed").length;
+        return (
+          <div className="mb-4 grid grid-cols-1 md:grid-cols-3 gap-2.5">
+            <StatsCard
+              title="As Respondent"
+              value={respondentCases.length}
+              icon={ShieldCheck}
+              subtitle={`${respActiveCount} active · ${scopeLabel}`}
+              href="/cases?asRespondent=true"
+              accent="warning"
+            />
+          </div>
+        );
+      })()}
+
       {/* Super Admin: system stats */}
       {dashType === "superadmin" && (
         <div className="grid grid-cols-2 md:grid-cols-4 gap-2.5 mb-4">
@@ -173,7 +213,285 @@ export default function Dashboard() {
         </div>
       )}
 
+      {isCollector && (() => {
+        const dayMs = 1000 * 60 * 60 * 24;
+        const monthStart = new Date(REF_DATE.getFullYear(), REF_DATE.getMonth(), 1);
+        const prevMonthStart = new Date(REF_DATE.getFullYear(), REF_DATE.getMonth() - 1, 1);
+        const prevMonthEnd = new Date(REF_DATE.getFullYear(), REF_DATE.getMonth(), 0);
+
+        const contemptCases = cases.filter(c => c.caseType === "Contempt Case" && c.status !== "Closed");
+        const contemptNewThisWeek = contemptCases.filter(c => (REF_DATE.getTime() - new Date(c.filingDate).getTime()) / dayMs <= 7).length;
+
+        const registeredThisMonth = cases.filter(c => new Date(c.filingDate) >= monthStart).length;
+        const registeredPrevMonth = cases.filter(c => { const d = new Date(c.filingDate); return d >= prevMonthStart && d <= prevMonthEnd; }).length;
+        const monthDelta = registeredPrevMonth ? Math.round(((registeredThisMonth - registeredPrevMonth) / registeredPrevMonth) * 100) : 0;
+
+        // Disposal rate — last 3 months
+        const threeMoAgo = new Date(REF_DATE.getTime() - 90 * dayMs);
+        const recent = cases.filter(c => new Date(c.lastUpdated) >= threeMoAgo);
+        const disposed3mo = recent.filter(c => c.status === "Closed" || c.disposed === "Yes").length;
+        const disposalRate = recent.length ? Math.round((disposed3mo / recent.length) * 100) : 0;
+
+        // Respondent involvement (active only)
+        const respActive = activeCases.filter(c => c.collectorateInvolvement === "Collectorate as Respondent");
+        const coRespActive = activeCases.filter(c => c.collectorateInvolvement === "Collectorate as Co-Respondent");
+        const respDeptBreakdown = (() => {
+          const m: Record<string, number> = {};
+          respActive.forEach(c => { m[c.department] = (m[c.department] || 0) + 1; });
+          return Object.entries(m).sort((a, b) => b[1] - a[1]).slice(0, 3);
+        })();
+
+        // Compliance — failed / overdue (Pending or Partially Complied)
+        const todayDateStr = REF_DATE.toISOString().split("T")[0];
+        const complianceFailed = cases
+          .filter(c => c.complianceRequired && (c.complianceStatus === "Pending" || c.complianceStatus === "Partially Complied"))
+          .map(c => {
+            const overdue = !!(c.complianceDueDate && c.complianceDueDate < todayDateStr);
+            return { c, overdue };
+          })
+          .sort((a, b) => {
+            if (a.overdue !== b.overdue) return a.overdue ? -1 : 1;
+            return (a.c.complianceDueDate || "9999").localeCompare(b.c.complianceDueDate || "9999");
+          });
+        const compliancePendingCount = complianceFailed.filter(x => x.c.complianceStatus === "Pending").length;
+        const compliancePartialCount = complianceFailed.filter(x => x.c.complianceStatus === "Partially Complied").length;
+        const complianceOverdueCount = complianceFailed.filter(x => x.overdue).length;
+
+        // Tomorrow's hearings at HC
+        const hcHearingsTomorrow = hearingsTomorrow.filter(h => (h.court || "").toLowerCase().includes("high court"));
+
+        // Requires your attention: contempt + urgent counter/compliance/listing
+        const todayMs = REF_DATE.getTime();
+        const attention = activeCases.map(c => {
+          const isContempt = c.caseType === "Contempt Case";
+          const counterDue = c.counterFilingDueDate && c.counterFiled !== "Yes" ? Math.ceil((new Date(c.counterFilingDueDate).getTime() - todayMs) / dayMs) : null;
+          const listingDays = c.dateOfListing ? Math.ceil((new Date(c.dateOfListing).getTime() - todayMs) / dayMs) : null;
+          let label = "";
+          let urgency = 99;
+          if (isContempt) { label = "Contempt — personal appearance risk"; urgency = -10; }
+          else if (counterDue !== null && counterDue <= 3) { label = `Counter due in ${counterDue}d`; urgency = counterDue; }
+          else if (listingDays !== null && listingDays >= 0 && listingDays <= 3) { label = `Listed in ${listingDays}d`; urgency = listingDays; }
+          else if (c.complianceRequired && c.complianceStatus === "Pending") { label = "Compliance pending"; urgency = 5; }
+          else return null;
+          return { c, label, urgency };
+        }).filter(Boolean).sort((a, b) => a!.urgency - b!.urgency).slice(0, 14) as { c: typeof cases[0]; label: string; urgency: number }[];
+
+        const formatNow = REF_DATE.toLocaleString("en-IN", { weekday: "short", day: "2-digit", month: "short", year: "numeric", hour: "numeric", minute: "2-digit", hour12: true });
+        const tomorrowFmt = tomorrow.toLocaleDateString("en-IN", { weekday: "short", day: "2-digit", month: "short", year: "numeric" });
+
+        return (
+          <>
+            {/* Contempt alert banner */}
+            {contemptCases.length > 0 && (
+              <div className="mb-5 rounded-md bg-status-urgent text-white p-4 flex items-center justify-between shadow-sm" style={{ backgroundImage: "repeating-linear-gradient(135deg, transparent, transparent 14px, rgba(255,255,255,0.06) 14px, rgba(255,255,255,0.06) 28px)" }}>
+                <div className="flex items-center gap-3">
+                  <div className="p-2 rounded bg-white/15"><AlertTriangle className="h-5 w-5" /></div>
+                  <div>
+                    <p className="text-[10px] font-bold tracking-widest uppercase opacity-90">Contempt Alert</p>
+                    <p className="text-base font-semibold leading-tight">{contemptCases.length} active contempt case{contemptCases.length > 1 ? "s" : ""} require your attention</p>
+                  </div>
+                </div>
+                <Link to="/cases?caseType=Contempt+Case"><Button variant="secondary" size="sm" className="bg-white text-status-urgent hover:bg-white/90 font-semibold">View Contempt Cases <ArrowRight className="h-3.5 w-3.5 ml-1" /></Button></Link>
+              </div>
+            )}
+
+            {/* Header strip */}
+            <div className="flex items-start justify-between mb-5 flex-wrap gap-3">
+              <div>
+                <h2 className="text-2xl font-bold text-foreground tracking-tight">District Legal Cell — Yadadri Bhuvanagiri</h2>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Hon'ble Collector's view · <span className="font-medium text-foreground">{currentUser?.name}</span> · As of <span className="font-semibold text-foreground">{formatNow}</span>
+                </p>
+              </div>
+              <div className="flex gap-2">
+                <Link to="/reports"><Button variant="outline" size="sm"><FileText className="h-3.5 w-3.5 mr-1.5" />Export brief</Button></Link>
+                <Button variant="ghost" size="sm" onClick={() => window.print()}><FileText className="h-3.5 w-3.5 mr-1.5" />Print</Button>
+              </div>
+            </div>
+
+            {/* 4 hero KPI cards */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
+              <Link to="/cases?caseType=Contempt+Case" className="govt-card p-5 hover:border-status-urgent/40 transition-colors">
+                <div className="flex items-start justify-between">
+                  <div>
+                    <p className="text-[10px] font-bold uppercase tracking-wider text-status-urgent">Contempt Cases</p>
+                    <p className="text-4xl font-bold text-status-urgent mt-2">{contemptCases.length}</p>
+                    <p className="text-[11px] text-muted-foreground mt-2">{contemptCases.length} active · {contemptNewThisWeek} new this week</p>
+                  </div>
+                  <div className="p-2 rounded bg-status-urgent/10"><AlertTriangle className="h-4 w-4 text-status-urgent" /></div>
+                </div>
+              </Link>
+
+              <Link to="/cases?action=pending" className="govt-card p-5 hover:border-status-warning/40 transition-colors">
+                <div className="flex items-start justify-between">
+                  <div>
+                    <p className="text-[10px] font-bold uppercase tracking-wider text-status-warning">Hearings Tomorrow · Action Pending</p>
+                    <p className="text-4xl font-bold text-status-warning mt-2">{hearingsTomorrow.length}</p>
+                    <p className="text-[11px] text-muted-foreground mt-2">cases require counter / compliance</p>
+                  </div>
+                  <div className="p-2 rounded bg-status-warning/10"><Clock className="h-4 w-4 text-status-warning" /></div>
+                </div>
+              </Link>
+
+              <Link to="/cases" className="govt-card p-5 hover:border-primary/40 transition-colors">
+                <div className="flex items-start justify-between">
+                  <div>
+                    <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Registered This Month</p>
+                    <p className="text-4xl font-bold text-foreground mt-2">{registeredThisMonth}</p>
+                    {registeredPrevMonth > 0 && (
+                      <p className={`text-[11px] mt-2 font-medium ${monthDelta >= 0 ? "text-status-success" : "text-status-urgent"}`}>{monthDelta >= 0 ? "↑" : "↓"} {Math.abs(monthDelta)}% vs last month</p>
+                    )}
+                  </div>
+                  <div className="p-2 rounded bg-muted"><FileText className="h-4 w-4 text-muted-foreground" /></div>
+                </div>
+              </Link>
+
+              <Link to="/cases?involvement=Collectorate+as+Respondent" className="govt-card p-5 hover:border-primary/40 transition-colors">
+                <div className="flex items-start justify-between">
+                  <div>
+                    <p className="text-[10px] font-bold uppercase tracking-wider text-primary">Collectorate as Respondent</p>
+                    <p className="text-4xl font-bold text-foreground mt-2">{respActive.length}</p>
+                    <p className="text-[11px] text-muted-foreground mt-2">active · +{coRespActive.length} as Co-Respondent</p>
+                  </div>
+                  <div className="p-2 rounded bg-primary/10"><Landmark className="h-4 w-4 text-primary" /></div>
+                </div>
+              </Link>
+            </div>
+
+            {/* Compliance — Failed / Overdue */}
+            <div className="govt-card mb-4">
+              <div className="govt-card-header">
+                <h3><AlertTriangle className="h-3.5 w-3.5 text-status-urgent" />Compliance — Failed / Overdue</h3>
+                <Link to="/compliance" className="text-[10px] text-primary hover:underline flex items-center gap-0.5">Open Compliance Tracker <ArrowRight className="h-3 w-3" /></Link>
+              </div>
+              <div className="px-3 pt-3 grid grid-cols-3 gap-2">
+                <div className="text-center p-2 rounded bg-status-urgent/10 border border-status-urgent/20">
+                  <p className="text-lg font-bold text-status-urgent">{compliancePendingCount}</p>
+                  <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Pending</p>
+                </div>
+                <div className="text-center p-2 rounded bg-status-warning/10 border border-status-warning/20">
+                  <p className="text-lg font-bold text-status-warning">{compliancePartialCount}</p>
+                  <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Partially Complied</p>
+                </div>
+                <div className="text-center p-2 rounded bg-status-urgent/10 border border-status-urgent/30">
+                  <p className="text-lg font-bold text-status-urgent">{complianceOverdueCount}</p>
+                  <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Overdue</p>
+                </div>
+              </div>
+              <table className="w-full govt-table mt-2">
+                <thead><tr><th>Case No.</th><th>Title</th><th>Court</th><th>Order Summary</th><th>Department</th><th>Status</th><th>Due Date</th><th>Completed</th><th>Last Officer</th></tr></thead>
+                <tbody>
+                  {complianceFailed.slice(0, 10).map(({ c, overdue }) => (
+                    <tr key={c.id} className={`cursor-pointer ${overdue ? "border-l-2 border-l-status-urgent" : ""}`} onClick={() => navigate(`/cases/${encodeURIComponent(c.id)}`)}>
+                      <td className="text-xs font-medium whitespace-nowrap">{c.caseNumber}</td>
+                      <td className="text-xs max-w-[160px] truncate">{c.title}</td>
+                      <td className="text-[11px] max-w-[120px] truncate">{c.court}</td>
+                      <td className="text-[11px] max-w-[180px] truncate">{c.orderSummary || "-"}</td>
+                      <td className="text-[11px] whitespace-nowrap">{c.department}</td>
+                      <td><StatusBadge value={c.complianceStatus} size="sm" /></td>
+                      <td className={`text-[11px] whitespace-nowrap ${overdue ? "text-status-urgent font-semibold" : ""}`}>{c.complianceDueDate || "-"}</td>
+                      <td className="text-[11px] whitespace-nowrap">{c.complianceCompletedDate || "-"}</td>
+                      <td className="text-[11px] truncate max-w-[140px]">{c.assignedOfficer}</td>
+                    </tr>
+                  ))}
+                  {complianceFailed.length === 0 && <tr><td colSpan={9} className="text-center py-6 text-xs text-muted-foreground">No failed or overdue compliance.</td></tr>}
+                </tbody>
+              </table>
+              {complianceFailed.length > 10 && (
+                <div className="px-4 py-2 border-t border-border text-[11px] text-muted-foreground">
+                  Showing 10 of {complianceFailed.length} — <Link to="/compliance" className="text-primary hover:underline">view all in Compliance Tracker</Link>
+                </div>
+              )}
+            </div>
+
+            {/* Total Cases — Court-wise Classification analytics */}
+            <CollectorCaseAnalytics cases={cases} hearings={hearings} dateFrom={dateFrom} dateTo={dateTo} />
+
+            {/* Quick action tiles */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-5">
+              <Link to="/cases/new" className="govt-card p-4 flex items-center justify-between border-l-4 border-l-primary hover:bg-muted/30 transition-colors">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 rounded bg-primary/10"><FileText className="h-4 w-4 text-primary" /></div>
+                  <div><p className="text-sm font-semibold text-foreground">Register New Case</p><p className="text-[10px] text-muted-foreground">Add a new writ, contempt or appeal</p></div>
+                </div>
+                <ArrowRight className="h-4 w-4 text-muted-foreground" />
+              </Link>
+              <Link to="/cases?caseType=Contempt+Case" className="govt-card p-4 flex items-center justify-between border-l-4 border-l-status-urgent hover:bg-muted/30 transition-colors">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 rounded bg-status-urgent/10"><AlertTriangle className="h-4 w-4 text-status-urgent" /></div>
+                  <div><p className="text-sm font-semibold text-foreground">View Contempt Cases</p><p className="text-[10px] text-muted-foreground">{contemptCases.length} active · personal-appearance risk</p></div>
+                </div>
+                <ArrowRight className="h-4 w-4 text-muted-foreground" />
+              </Link>
+              <Link to="/hearings" className="govt-card p-4 flex items-center justify-between border-l-4 border-l-status-warning hover:bg-muted/30 transition-colors">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 rounded bg-status-warning/10"><Gavel className="h-4 w-4 text-status-warning" /></div>
+                  <div><p className="text-sm font-semibold text-foreground">Tomorrow's Hearings</p><p className="text-[10px] text-muted-foreground">{hcHearingsTomorrow.length} listed at HC Telangana</p></div>
+                </div>
+                <ArrowRight className="h-4 w-4 text-muted-foreground" />
+              </Link>
+            </div>
+
+            {/* Two-column: Attention + Tomorrow at HC */}
+            <div className="grid lg:grid-cols-2 gap-4 mb-4">
+              <div className="govt-card">
+                <div className="govt-card-header">
+                  <h3><AlertTriangle className="h-3.5 w-3.5 text-status-urgent" />Requires your attention</h3>
+                  <Link to="/cases" className="text-[10px] text-primary hover:underline flex items-center gap-0.5">See all {attention.length} <ArrowRight className="h-3 w-3" /></Link>
+                </div>
+                <table className="w-full govt-table">
+                  <thead><tr><th>Case No.</th><th>Type</th><th>Reason</th><th>Officer</th></tr></thead>
+                  <tbody>
+                    {attention.slice(0, 8).map(({ c, label }) => (
+                      <tr key={c.id} className="cursor-pointer" onClick={() => navigate(`/cases/${encodeURIComponent(c.id)}`)}>
+                        <td className="text-xs font-medium whitespace-nowrap">{c.caseNumber}</td>
+                        <td><StatusBadge value={c.caseType === "Contempt Case" ? "Critical" : c.priority} type="priority" size="sm" /></td>
+                        <td className="text-[11px] max-w-[220px] truncate">{label}</td>
+                        <td className="text-[10px] truncate max-w-[140px]">{c.assignedOfficer}</td>
+                      </tr>
+                    ))}
+                    {attention.length === 0 && <tr><td colSpan={4} className="text-center py-6 text-xs text-muted-foreground">All clear — no urgent items.</td></tr>}
+                  </tbody>
+                </table>
+              </div>
+
+              <div className="govt-card">
+                <div className="govt-card-header">
+                  <h3><Gavel className="h-3.5 w-3.5 text-primary" />Tomorrow at the High Court</h3>
+                  <span className="text-[10px] text-muted-foreground">{tomorrowFmt}</span>
+                </div>
+                <div className="px-3 pt-2">
+                  <div className="text-[11px] p-2.5 rounded bg-status-warning/10 text-status-warning border border-status-warning/30 mb-2 flex items-center gap-2">
+                    <AlertTriangle className="h-3.5 w-3.5 flex-shrink-0" />
+                    <span>Bench not yet confirmed by Liaison for tomorrow — last updated 4 hours ago.</span>
+                  </div>
+                </div>
+                <table className="w-full govt-table">
+                  <thead><tr><th>Case No.</th><th>Petitioner</th><th>Time</th><th>Type</th></tr></thead>
+                  <tbody>
+                    {hcHearingsTomorrow.slice(0, 8).map(h => {
+                      const c = cases.find(x => x.id === h.caseId);
+                      return (
+                        <tr key={h.id} className="cursor-pointer" onClick={() => navigate(`/cases/${encodeURIComponent(h.caseId)}`)}>
+                          <td className="text-xs font-medium whitespace-nowrap">{c?.caseNumber || h.caseId}</td>
+                          <td className="text-xs max-w-[160px] truncate">{c?.petitioner || h.caseTitle}</td>
+                          <td className="text-[11px] whitespace-nowrap">{h.time || "—"}</td>
+                          <td className="text-[10px]">{h.type}</td>
+                        </tr>
+                      );
+                    })}
+                    {hcHearingsTomorrow.length === 0 && <tr><td colSpan={4} className="text-center py-6 text-xs text-muted-foreground">No High Court matters listed for tomorrow.</td></tr>}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </>
+        );
+      })()}
+
+
       {/* Core KPI Row 1 */}
+      {!isCollector && (
       <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-2.5 mb-4">
         <StatsCard title="Total Cases" value={cases.length} icon={Briefcase} href="/cases" />
         <StatsCard title="Fresh" value={freshCases.length} icon={TrendingUp} href="/cases?status=Fresh" accent="success" />
@@ -183,6 +501,7 @@ export default function Dashboard() {
         <StatsCard title="Appeals" value={appeals.length} icon={Scale} href="/appeals" accent="info" />
         <StatsCard title="Alerts" value={pendingAlerts.length} icon={AlertTriangle} href="/alerts" accent="urgent" />
       </div>
+      )}
 
       {/* Row 2: Urgency + Compliance */}
       {showApprovalCards && (
@@ -234,7 +553,7 @@ export default function Dashboard() {
       )}
 
       {/* Division-wise counts (for Collector, Admin, Legal, DRO) */}
-      {["collector", "admin", "superadmin", "legal", "dro", "addlcollector", "readonly"].includes(dashType) && (
+      {["admin", "superadmin", "legal", "dro", "addlcollector", "readonly"].includes(dashType) && (
         <div className="govt-card mb-4">
           <div className="govt-card-header"><h3><MapPin className="h-3.5 w-3.5" />Division-wise Cases</h3></div>
           <div className="p-3 grid grid-cols-2 gap-2">
@@ -370,7 +689,7 @@ export default function Dashboard() {
       )}
 
       {/* Upcoming Hearings + Land Disputes */}
-      {dashType !== "dataentry" && (
+      {dashType !== "dataentry" && !isCollector && (
         <div className="grid md:grid-cols-2 gap-4 mb-4">
           <div className="govt-card">
             <div className="govt-card-header">
@@ -402,7 +721,7 @@ export default function Dashboard() {
       )}
 
       {/* Recent Updates + Alerts */}
-      {dashType !== "dataentry" && (
+      {dashType !== "dataentry" && !isCollector && (
         <div className="grid md:grid-cols-2 gap-4 mb-4">
           <div className="govt-card">
             <div className="govt-card-header"><h3><Activity className="h-3.5 w-3.5" />Updated in Last 7 Days ({last7Days.length})</h3></div>

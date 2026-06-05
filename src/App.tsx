@@ -22,6 +22,7 @@ import AppealList from "./pages/appeals/AppealList";
 import AddAppeal from "./pages/appeals/AddAppeal";
 import HearingList from "./pages/hearings/HearingList";
 import CourtLiaisonUpdates from "./pages/hearings/CourtLiaisonUpdates";
+import DailyHearingDesk from "./pages/hearings/DailyHearingDesk";
 import ComplianceTracker from "./pages/compliance/ComplianceTracker";
 import AlertCenter from "./pages/alerts/AlertCenter";
 import ReportsPage from "./pages/reports/ReportsPage";
@@ -30,6 +31,7 @@ import RolesPermissions from "./pages/admin/RolesPermissions";
 import DocumentManagement from "./pages/admin/DocumentManagement";
 import AuditLogs from "./pages/admin/AuditLogs";
 import SettingsPage from "./pages/admin/SettingsPage";
+import CaseStatusMaster from "./pages/admin/CaseStatusMaster";
 import Profile from "./pages/profile/Profile";
 import ChangePassword from "./pages/profile/ChangePassword";
 import NotFound from "./pages/NotFound";
@@ -63,6 +65,7 @@ function AppRoutes() {
       <Route path="/appeals/new" element={<ProtectedRoute><AddAppeal /></ProtectedRoute>} />
       <Route path="/hearings" element={<ProtectedRoute><HearingList /></ProtectedRoute>} />
       <Route path="/court-liaison" element={<ProtectedRoute><CourtLiaisonUpdates /></ProtectedRoute>} />
+      <Route path="/daily-hearing-desk" element={<ProtectedRoute><DailyHearingDesk /></ProtectedRoute>} />
       <Route path="/compliance" element={<ProtectedRoute><ComplianceTracker /></ProtectedRoute>} />
       <Route path="/alerts" element={<ProtectedRoute><AlertCenter /></ProtectedRoute>} />
       <Route path="/reports" element={<ProtectedRoute><ReportsPage /></ProtectedRoute>} />
@@ -71,6 +74,7 @@ function AppRoutes() {
       <Route path="/documents" element={<ProtectedRoute><DocumentManagement /></ProtectedRoute>} />
       <Route path="/audit-logs" element={<ProtectedRoute><AuditLogs /></ProtectedRoute>} />
       <Route path="/settings" element={<ProtectedRoute><SettingsPage /></ProtectedRoute>} />
+      <Route path="/case-status-master" element={<ProtectedRoute><CaseStatusMaster /></ProtectedRoute>} />
       <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
       <Route path="/change-password" element={<ProtectedRoute><ChangePassword /></ProtectedRoute>} />
       <Route path="*" element={<NotFound />} />
@@ -85,9 +89,9 @@ const App = () => (
       <Sonner />
       <AuthProvider>
         <DataProvider>
-          <BrowserRouter basename="/demo-lcms-ybg-tg">
+          <BrowserRouter>
             <AppRoutes />
-          </BrowserRouter >
+          </BrowserRouter>
         </DataProvider>
       </AuthProvider>
     </TooltipProvider>

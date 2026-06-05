@@ -63,20 +63,20 @@ export interface Permissions {
 
 const FULL_MENU = [
   "/", "/cases", "/cases/fresh", "/cases/ongoing", "/cases/closed",
-  "/appeals", "/hearings", "/court-liaison", "/compliance",
-  "/alerts", "/reports", "/users", "/roles", "/documents", "/audit-logs",
+  "/appeals", "/hearings", "/court-liaison", "/daily-hearing-desk", "/compliance",
+  "/alerts", "/reports", "/users", "/roles", "/documents", "/case-status-master", "/audit-logs",
   "/settings", "/profile", "/change-password",
 ];
 
 const MAIN_MENU = [
   "/", "/cases", "/cases/fresh", "/cases/ongoing", "/cases/closed",
-  "/appeals", "/hearings", "/court-liaison", "/compliance",
+  "/appeals", "/hearings", "/court-liaison", "/daily-hearing-desk", "/compliance",
   "/alerts", "/reports", "/documents", "/profile", "/change-password",
 ];
 
 const COLLECTOR_MENU = [
   "/", "/cases", "/cases/fresh", "/cases/ongoing", "/cases/closed",
-  "/appeals", "/hearings", "/court-liaison", "/compliance",
+  "/appeals", "/hearings", "/court-liaison", "/daily-hearing-desk", "/compliance",
   "/alerts", "/reports", "/documents", "/audit-logs", "/profile", "/change-password",
 ];
 
@@ -168,8 +168,8 @@ export function getPermissions(role: AppRole): Permissions {
         canExportReports: true, canBulkUpload: true,
         canUpdateCompliance: true, canUpdateCourtLiaison: true,
         canUploadDocuments: true, canApproveGP: true,
-        visibleSidebarSections: { main: true, admin: false, account: true, departments: true, divisions: true, collectorQuickAccess: true },
-        visibleMenuItems: [...MAIN_MENU, "/audit-logs"],
+        visibleSidebarSections: { main: true, admin: true, account: true, departments: true, divisions: true, collectorQuickAccess: true },
+        visibleMenuItems: [...MAIN_MENU, "/case-status-master", "/audit-logs"],
       });
     case "Section C Officer":
     case "Section D Officer":
@@ -196,7 +196,7 @@ export function getPermissions(role: AppRole): Permissions {
         canUpdateCompliance: true, canUpdateCourtLiaison: true,
         canUploadDocuments: true,
         visibleSidebarSections: { main: true, admin: false, account: true, departments: false, divisions: false, collectorQuickAccess: false },
-        visibleMenuItems: ["/", "/cases", "/hearings", "/court-liaison", "/compliance", "/alerts", "/documents", "/profile", "/change-password"],
+        visibleMenuItems: ["/", "/cases", "/hearings", "/court-liaison", "/daily-hearing-desk", "/compliance", "/alerts", "/documents", "/profile", "/change-password"],
       });
     case "Department Nodal Officer":
       return makePerms({

@@ -1,45 +1,86 @@
-# Add department-specific logins for all 10 departments
+# Collector Dashboard Enhancements — Implementation Plan
 
-## What exists today
+Scope: Incremental additions only. Do NOT redesign existing dashboard. Keep Priority/Attention table and existing structure intact.
 
-Only **one** Department Nodal Officer is seeded: `dept.revenue@lcms.local` (Revenue Department). The role-scoping logic in `useRoleFilter.ts` already filters cases by `currentUser.department`, so adding more nodal officers automatically gives each one a department-scoped view — no logic changes needed.
+---
 
-The system defines **10 departments** in `sampleData.ts`:
-Collectorate Legal Cell, Revenue Department, Land Records, Tahsildar Office, Survey & Settlement, Municipal Administration, Panchayat Raj, Roads & Buildings, Irrigation, Education Department.
+## 1. Clickable Summary Cards (Collector Dashboard)
+Add a 3-card row at the top of the existing `CollectorCaseAnalytics` widget (replacing the current internal summary tiles to avoid duplication):
+- **Total Cases** → `/cases?scope=collector`
+- **Disposed Cases** → `/cases?disposed=Yes`
+- **Pending Counter Cases** → `/cases?counterPending=true`
 
-## Fix
+All cards honor the active dashboard filters (court, case type, date range) by passing query params.
 
-Add 9 new `Department Nodal Officer` accounts (one per missing department) and surface them on the Login screen.
+## 2. Dashboard Filters (Collector Dashboard)
+Extend existing filter bar in `CollectorCaseAnalytics` to include:
+- **Court Type** (existing) — derived from `cases[].courtType` union with seed Excel values (WP/WA/CRP/SA/CC court contexts already in data)
+- **Case Type** (existing) — ensure WP, WA, CRP, SA, CC, Contempt Case appear
+- **Date Range** (NEW) — `From` and `To` date inputs, filters by `filingDate`. Reuse existing shadcn datepicker pattern.
 
-### New seeded accounts (all password `demo123`)
+## 3. Global Date Filter (All Dashboards)
+Create a lightweight `DashboardDateFilter` component placed in the dashboard header strip on `Dashboard.tsx` for ALL roles. It filters case-derived metrics by `filingDate` range. Store state in `Dashboard.tsx` and pass into role-specific blocks via props. Default: empty (no filter).
 
-| Email | Department |
-|---|---|
-| dept.revenue@lcms.local *(existing)* | Revenue Department |
-| dept.legalcell@lcms.local | Collectorate Legal Cell |
-| dept.landrecords@lcms.local | Land Records |
-| dept.tahsildar@lcms.local | Tahsildar Office |
-| dept.survey@lcms.local | Survey & Settlement |
-| dept.municipal@lcms.local | Municipal Administration |
-| dept.panchayat@lcms.local | Panchayat Raj |
-| dept.randb@lcms.local | Roads & Buildings |
-| dept.irrigation@lcms.local | Irrigation |
-| dept.education@lcms.local | Education Department |
+## 4. Court-wise View (already exists)
+The existing `CollectorCaseAnalytics` per-court grouping already shows:
+- Disposed → department-wise Complied / Non-Complied
+- Pending Counter → department-wise Counter Filed / Counter Pending / Next Hearing
 
-Each gets a realistic Telugu name, unique mobile (9000000040–48), `mandal: "All"`, and `Active` status.
+Refinements:
+- **Compliance logic update**: A disposed case is `Non-Complied` if `complianceStatus !== "Complied"` AND `complianceRequired === true`. Cases with no compliance required count as Complied (or excluded — choose Complied).
+- **Counter Filed logic**: Already uses `counterFiled === "Yes"`. Keep as-is (interpreted as "at least one counter uploaded").
+- **Department display**: Use primary `department` field — already in place.
+- **Make each department-row count clickable** → links to `/cases?...` with appropriate filter (e.g. `?disposed=Yes&compliance=NonComplied&department=X`).
 
-### Files touched
+## 5. CaseList Query Param Support
+Update `src/pages/cases/CaseList.tsx` to read & apply these URL params:
+- `disposed=Yes|No`
+- `counterPending=true` (status !== Closed && counterFiled !== Yes)
+- `counterFiled=true`
+- `compliance=Complied|NonComplied|Pending`
+- `department=<name>`
+- `courtType=<name>`
+- `caseType=<name>`
+- `dateFrom`, `dateTo` (filingDate range)
+- `scope=collector` (no extra filter — district level)
 
-1. **`src/contexts/AuthContext.tsx`** — append 9 entries to `SEED_USERS`. The bump in length triggers the existing "force refresh seed users" guard in `loadUsers()`, so existing demo browsers will pick up the new accounts on next load.
-2. **`src/pages/Login.tsx`** — replace the single Revenue entry under `DEPARTMENTS & MANDALS` with a new dedicated `DEPARTMENT NODAL OFFICERS` group listing all 10 departments. Mandals stay in their own group.
+Apply on mount via `useSearchParams` and pre-populate visible filters where possible.
 
-### What this enables (no extra code)
+## 6. Case Status Master (Super Admin + Legal Cell)
+Create new admin page `src/pages/admin/CaseStatusMaster.tsx`:
+- Lists existing statuses (default + custom) with usage count.
+- Add new status (name, color token).
+- Delete only allowed if usage count = 0.
+- All edits write an `auditLog` entry via DataContext.
+- Visible only to roles: `Super Admin`, `Legal Cell` (existing roles in `permissions.ts`).
+- Add route in `App.tsx` and sidebar entry in `AppSidebar.tsx` under Admin section.
 
-- Each nodal officer logs in and immediately sees only cases where `case.department === their department`.
-- Their dashboard, case list, alerts, reports, and audit logs are all already scoped through `useRoleFilter` / `getRoleDashboardType("department")`.
-- Sidebar shows the Departments section but hides Admin and Divisions, matching existing `Department Nodal Officer` permissions.
+Data layer:
+- Extend `DataContext.tsx` with `caseStatuses: string[]` (seeded from existing statuses) + `addCaseStatus`, `deleteCaseStatus`. Persist to `localStorage` (consistent with existing demo persistence layer).
+- Replace hardcoded status dropdown options in `AddCase.tsx` / `EditCase.tsx` / `CaseList.tsx` filter to consume `caseStatuses` from context.
 
-## Out of scope
+## 7. Out of Scope (explicit)
+- No charts / reports module.
+- No mobile optimization of Collector Dashboard.
+- No redesign of Priority/Attention table.
+- No respondent-assignment workflow for counter filing (deferred).
+- No role hierarchy changes; Collector already shows district-level via existing `useRoleFilter`.
 
-- No permission changes, no new roles, no new dashboards, no schema changes.
-- No changes to `permissions.ts` or `useRoleFilter.ts` — both already handle this role correctly.
+---
+
+## Technical Touch Points
+- `src/components/dashboard/CollectorCaseAnalytics.tsx` — add date filter, clickable cards, clickable dept rows, refine compliance logic
+- `src/pages/Dashboard.tsx` — add global `DashboardDateFilter` in header for all roles, lift date state, pass to children
+- `src/components/dashboard/DashboardDateFilter.tsx` (NEW) — reusable date-range filter
+- `src/pages/cases/CaseList.tsx` — honor new query params
+- `src/contexts/DataContext.tsx` — add caseStatuses state + actions
+- `src/pages/admin/CaseStatusMaster.tsx` (NEW)
+- `src/App.tsx` — route
+- `src/components/layout/AppSidebar.tsx` — sidebar link (admin only)
+- `src/lib/permissions.ts` — gate Case Status Master to Super Admin + Legal Cell
+
+## Validation
+- Manual click-through: each summary card and each department count opens correctly filtered CaseList.
+- Date filter applies to summary counts and per-court breakdown.
+- Case Status Master: add → appears in AddCase dropdown; delete blocked when in use.
+- Other dashboards unaffected except for the new date filter strip.

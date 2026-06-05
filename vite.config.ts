@@ -4,8 +4,6 @@ import path from "path";
 import { componentTagger } from "lovable-tagger";
 
 export default defineConfig(({ mode }) => ({
-  base: "/demo-lcms-ybg-tg/",   // ✅🔥 ADD THIS LINE
-
   server: {
     host: "::",
     port: 8080,

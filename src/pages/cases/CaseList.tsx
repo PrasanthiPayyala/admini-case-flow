@@ -89,6 +89,9 @@ export default function CaseList() {
   const [counterF, setCounterF] = useState("all");
   const [disposedF, setDisposedF] = useState("all");
   const [closedF, setClosedF] = useState("all");
+  const [courtTypeF, setCourtTypeF] = useState("all");
+  const [dateFromF, setDateFromF] = useState("");
+  const [dateToF, setDateToF] = useState("");
   const [page, setPage] = useState(1);
 
   useEffect(() => {
@@ -104,6 +107,14 @@ export default function CaseList() {
     const cnt = searchParams.get("counter");
     const dis = searchParams.get("disposed");
     const cls = searchParams.get("closed");
+    const ct = searchParams.get("caseType");
+    const courtType = searchParams.get("courtType");
+    const counterPending = searchParams.get("counterPending");
+    const counterFiled = searchParams.get("counterFiled");
+    const asResp = searchParams.get("asRespondent");
+    const dFrom = searchParams.get("dateFrom");
+    const dTo = searchParams.get("dateTo");
+    if (asResp === "true") setCollectF("AsRespondent");
     if (s && STATUSES.includes(s)) setStatusF(s);
     if (inv) setCollectF(inv);
     if (land === "true") setLandF("yes");
@@ -111,11 +122,17 @@ export default function CaseList() {
     if (div && DIVISION_NAMES.includes(div)) setDivisionF(div);
     if (gp === "Pending") setPendingAtF("GP Approval");
     if (ca === "Pending") setPendingAtF("Collector Approval");
-    if (comp === "pending") setComplianceF("pending");
+    if (comp) setComplianceF(comp);
     if (ins) setInstructionsF(ins);
     if (cnt) setCounterF(cnt);
     if (dis) setDisposedF(dis);
     if (cls) setClosedF(cls);
+    if (ct) setTypeF(ct);
+    if (courtType) setCourtTypeF(courtType);
+    if (counterPending === "true") setCounterF("Pending-Open");
+    if (counterFiled === "true") setCounterF("Yes");
+    if (dFrom) setDateFromF(dFrom);
+    if (dTo) setDateToF(dTo);
   }, [searchParams]);
 
   const filtered = useMemo(() => cases.filter(c => {
@@ -129,7 +146,11 @@ export default function CaseList() {
     if (mandalF !== "all" && c.mandal !== mandalF) return false;
     if (deptF !== "all" && c.department !== deptF) return false;
     if (priorityF !== "all" && c.priority !== priorityF) return false;
-    if (collectF !== "all" && c.collectorateInvolvement !== collectF) return false;
+    if (collectF !== "all") {
+      if (collectF === "AsRespondent") {
+        if (c.collectorateInvolvement !== "Collectorate as Respondent" && c.collectorateInvolvement !== "Collectorate as Co-Respondent") return false;
+      } else if (c.collectorateInvolvement !== collectF) return false;
+    }
     if (divisionF !== "all" && c.division !== divisionF) return false;
     if (pendingAtF !== "all" && c.pendingAtLevel !== pendingAtF) return false;
     if (landF === "yes" && !c.landDisputeFlag) return false;
@@ -138,15 +159,27 @@ export default function CaseList() {
       if (complianceF === "partial" && c.complianceStatus !== "Partially Complied") return false;
       if (complianceF === "complied" && c.complianceStatus !== "Complied") return false;
       if (complianceF === "na" && c.complianceStatus !== "Not Applicable") return false;
+      if (complianceF === "noncomplied") {
+        // Non-complied = required compliance but not complied
+        if (!c.complianceRequired) return false;
+        if (c.complianceStatus === "Complied") return false;
+      }
     }
     if (instructionsF !== "all" && (c.instructionsFiled || "Pending") !== instructionsF) return false;
-    if (counterF !== "all" && (c.counterFiled || "No") !== counterF) return false;
+    if (counterF !== "all") {
+      if (counterF === "Pending-Open") {
+        if (c.status === "Closed" || c.counterFiled === "Yes") return false;
+      } else if ((c.counterFiled || "No") !== counterF) return false;
+    }
     if (disposedF !== "all" && (c.disposed || "No") !== disposedF) return false;
     if (closedF === "yes" && !c.closed) return false;
     if (closedF === "no" && c.closed) return false;
     if (closedF === "disposed_not_closed" && (c.disposed !== "Yes" || c.closed)) return false;
+    if (courtTypeF !== "all" && c.courtType !== courtTypeF) return false;
+    if (dateFromF && c.filingDate < dateFromF) return false;
+    if (dateToF && c.filingDate > dateToF) return false;
     return true;
-  }), [cases, search, statusF, typeF, courtF, mandalF, deptF, priorityF, collectF, complianceF, landF, divisionF, pendingAtF, instructionsF, counterF, disposedF, closedF]);
+  }), [cases, search, statusF, typeF, courtF, mandalF, deptF, priorityF, collectF, complianceF, landF, divisionF, pendingAtF, instructionsF, counterF, disposedF, closedF, courtTypeF, dateFromF, dateToF]);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const paged = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
@@ -155,10 +188,10 @@ export default function CaseList() {
     setSearch(""); setStatusF("all"); setTypeF("all"); setCourtF("all"); setMandalF("all");
     setDeptF("all"); setPriorityF("all"); setCollectF("all"); setComplianceF("all"); setLandF("all");
     setDivisionF("all"); setPendingAtF("all"); setInstructionsF("all"); setCounterF("all");
-    setDisposedF("all"); setClosedF("all"); setPage(1);
+    setDisposedF("all"); setClosedF("all"); setCourtTypeF("all"); setDateFromF(""); setDateToF(""); setPage(1);
   };
 
-  const hasFilters = statusF !== "all" || typeF !== "all" || courtF !== "all" || mandalF !== "all" || deptF !== "all" || priorityF !== "all" || collectF !== "all" || complianceF !== "all" || landF !== "all" || divisionF !== "all" || pendingAtF !== "all" || instructionsF !== "all" || counterF !== "all" || disposedF !== "all" || closedF !== "all" || search;
+  const hasFilters = statusF !== "all" || typeF !== "all" || courtF !== "all" || mandalF !== "all" || deptF !== "all" || priorityF !== "all" || collectF !== "all" || complianceF !== "all" || landF !== "all" || divisionF !== "all" || pendingAtF !== "all" || instructionsF !== "all" || counterF !== "all" || disposedF !== "all" || closedF !== "all" || courtTypeF !== "all" || dateFromF || dateToF || search;
 
   const exportCsv = () => {
     const headers = ["Sl.No","Department","Case Type","Case No./Year","Title","Petitioner","Respondent","Instructions Filed","Counter Filed","S.R. Number","Next Hearing","Disposed","Compliance","Pending At","Officer","Last Updated"];
@@ -228,8 +261,8 @@ export default function CaseList() {
           <Select value={collectF} onValueChange={v => { setCollectF(v); setPage(1); }}><SelectTrigger className="w-[140px] h-8 text-xs"><SelectValue placeholder="Involvement" /></SelectTrigger>
             <SelectContent><SelectItem value="all">All</SelectItem>{collectorateInvolvementTypes.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent>
           </Select>
-          <Select value={complianceF} onValueChange={v => { setComplianceF(v); setPage(1); }}><SelectTrigger className="w-[120px] h-8 text-xs"><SelectValue placeholder="Compliance" /></SelectTrigger>
-            <SelectContent><SelectItem value="all">All</SelectItem><SelectItem value="pending">Pending</SelectItem><SelectItem value="partial">Partial</SelectItem><SelectItem value="complied">Complied</SelectItem><SelectItem value="na">N/A</SelectItem></SelectContent>
+          <Select value={complianceF} onValueChange={v => { setComplianceF(v); setPage(1); }}><SelectTrigger className="w-[130px] h-8 text-xs"><SelectValue placeholder="Compliance" /></SelectTrigger>
+            <SelectContent><SelectItem value="all">All</SelectItem><SelectItem value="pending">Pending</SelectItem><SelectItem value="partial">Partial</SelectItem><SelectItem value="complied">Complied</SelectItem><SelectItem value="noncomplied">Non-Complied</SelectItem><SelectItem value="na">N/A</SelectItem></SelectContent>
           </Select>
           <Select value={instructionsF} onValueChange={v => { setInstructionsF(v); setPage(1); }}><SelectTrigger className="w-[130px] h-8 text-xs"><SelectValue placeholder="Instructions" /></SelectTrigger>
             <SelectContent><SelectItem value="all">All Instr.</SelectItem><SelectItem value="Yes">Filed</SelectItem><SelectItem value="No">Not Filed</SelectItem><SelectItem value="Pending">Pending</SelectItem></SelectContent>

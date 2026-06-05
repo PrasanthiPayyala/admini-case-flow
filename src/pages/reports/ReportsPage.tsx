@@ -27,6 +27,9 @@ export default function ReportsPage() {
     if (workflowF === "sr_pending" && (c.counterFiled !== "Yes" || c.srNumber)) return false;
     if (workflowF === "disposed_open" && !(c.disposed === "Yes" && !c.closed)) return false;
     if (workflowF === "closed" && !c.closed) return false;
+    if (workflowF === "interim_pending" && !(c.interimOrder?.date && (c.interimOrder?.compliance === "Pending" || c.interimOrder?.compliance === "Partially Complied"))) return false;
+    if (workflowF === "final_pending" && !(c.finalOrder?.date && ((c.finalOrder?.complianceOfOrders || c.complianceOfOrders) === "Pending" || (c.finalOrder?.complianceOfOrders || c.complianceOfOrders) === "Partially Complied"))) return false;
+    if (workflowF === "listing_pending" && !c.dateOfListing) return false;
     return true;
   });
 
@@ -50,7 +53,15 @@ export default function ReportsPage() {
   };
 
   const exportCSV = () => {
-    const headers = ["Sl.No", "Case Number", "Title", "Court", "Case Type", "Department", "Mandal", "Status", "Pending At", "Instructions Filed", "Counter Filed", "S.R. Number", "Disposed", "Disposal Date", "Closed", "Open Directions", "Compliance", "Last Updated"];
+    const headers = [
+      "Sl.No","Case Number","Title","Court","Case Type","Department","Mandal","Status","Pending At",
+      "Date of Filing","Date of Listing","Prayer",
+      "Respondent Department","Respondent Office","Respondent Name",
+      "Instructions Filed","Counter Filed","Counter Filing Date","S.R. Number",
+      "Date of Interim Order","Interim Compliance",
+      "Date of Final Order","Period for Disposal","Compliance of Orders",
+      "Disposed","Disposal Date","Closed","Open Directions","Compliance","Last Updated",
+    ];
     const rows = filtered.map(c => [
       c.slNo ?? "",
       c.caseNumber,
@@ -61,9 +72,21 @@ export default function ReportsPage() {
       c.mandal,
       c.status,
       c.pendingAtLevel,
+      c.filingDate || "",
+      c.dateOfListing || "",
+      `"${(c.prayer || "").replace(/"/g, '""')}"`,
+      `"${c.respondentDepartment || ""}"`,
+      `"${c.respondentOfficeName || ""}"`,
+      `"${c.respondentName || ""}"`,
       c.instructionsFiled || "",
       c.counterFiled || "",
+      c.counterFilingDate || "",
       c.srNumber || "",
+      c.interimOrder?.date || "",
+      c.interimOrder?.compliance || "",
+      c.finalOrder?.date || "",
+      c.finalOrder?.periodForDisposal || "",
+      c.finalOrder?.complianceOfOrders || c.complianceOfOrders || "",
       c.disposed || "",
       c.disposalDate || "",
       c.closed ? "Yes" : "No",
@@ -116,6 +139,9 @@ export default function ReportsPage() {
               <SelectItem value="instructions_pending">Instructions Pending</SelectItem>
               <SelectItem value="counter_pending">Counter Pending</SelectItem>
               <SelectItem value="sr_pending">S.R. Number Pending</SelectItem>
+              <SelectItem value="interim_pending">Interim Order Compliance Pending</SelectItem>
+              <SelectItem value="final_pending">Final Order Compliance Pending</SelectItem>
+              <SelectItem value="listing_pending">Has Date of Listing</SelectItem>
               <SelectItem value="disposed_open">Disposed (Not Closed)</SelectItem>
               <SelectItem value="closed">Closed Files</SelectItem>
             </SelectContent>
