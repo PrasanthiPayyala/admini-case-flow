@@ -1,86 +1,91 @@
-# Collector Dashboard Enhancements — Implementation Plan
+# LCMS MySQL Schema — Plan
 
-Scope: Incremental additions only. Do NOT redesign existing dashboard. Keep Priority/Attention table and existing structure intact.
+This delivers the **MySQL DDL** for the Laravel/MySQL backend (per project memory: government-hosted, no cloud branding) and a **field-by-field mapping** to the existing React/TypeScript data model in `src/data/sampleData.ts` and `src/contexts/DataContext.tsx`.
 
----
+No frontend behavior changes. The current localStorage demo layer stays intact (per `mem://tech/demo-persistence-layer`). The SQL files are deliverables only — to be handed to the Laravel team or used later when wiring real APIs.
 
-## 1. Clickable Summary Cards (Collector Dashboard)
-Add a 3-card row at the top of the existing `CollectorCaseAnalytics` widget (replacing the current internal summary tiles to avoid duplication):
-- **Total Cases** → `/cases?scope=collector`
-- **Disposed Cases** → `/cases?disposed=Yes`
-- **Pending Counter Cases** → `/cases?counterPending=true`
+## Deliverables (files to create)
 
-All cards honor the active dashboard filters (court, case type, date range) by passing query params.
+1. `db/schema/lcms_schema.sql` — full DDL (`CREATE DATABASE` + all `CREATE TABLE`s, indexes, FKs)
+2. `db/schema/lcms_seed_masters.sql` — seed inserts for master tables (mandals, divisions, sections, case types, statuses, roles, etc.) sourced from `sampleData.ts`
+3. `db/schema/README.md` — mapping table: TS interface → MySQL table/column, plus ER overview and conventions
 
-## 2. Dashboard Filters (Collector Dashboard)
-Extend existing filter bar in `CollectorCaseAnalytics` to include:
-- **Court Type** (existing) — derived from `cases[].courtType` union with seed Excel values (WP/WA/CRP/SA/CC court contexts already in data)
-- **Case Type** (existing) — ensure WP, WA, CRP, SA, CC, Contempt Case appear
-- **Date Range** (NEW) — `From` and `To` date inputs, filters by `filingDate`. Reuse existing shadcn datepicker pattern.
+## Conventions
 
-## 3. Global Date Filter (All Dashboards)
-Create a lightweight `DashboardDateFilter` component placed in the dashboard header strip on `Dashboard.tsx` for ALL roles. It filters case-derived metrics by `filingDate` range. Store state in `Dashboard.tsx` and pass into role-specific blocks via props. Default: empty (no filter).
+- Engine `InnoDB`, charset `utf8mb4`, collation `utf8mb4_unicode_ci`
+- PKs: `BIGINT UNSIGNED AUTO_INCREMENT` for new rows; **plus** a `code VARCHAR(64) UNIQUE` column to hold the existing human IDs (`LCMS/YBG/2026/001`, `HRG/001`, `DIR-...`, `AUD-...`) so the frontend keeps working without ID rewrites
+- Timestamps: `created_at`, `updated_at` (`TIMESTAMP DEFAULT CURRENT_TIMESTAMP ...`)
+- Enums for closed value sets (status, priority, compliance) — values mirror `sampleData.ts` constants
+- JSON columns only where the frontend stores free-form arrays today (`tags`, multi-party blocks if needed); otherwise normalized
+- All FKs `ON DELETE RESTRICT` except child collections (`ON DELETE CASCADE`)
 
-## 4. Court-wise View (already exists)
-The existing `CollectorCaseAnalytics` per-court grouping already shows:
-- Disposed → department-wise Complied / Non-Complied
-- Pending Counter → department-wise Counter Filed / Counter Pending / Next Hearing
+## Tables
 
-Refinements:
-- **Compliance logic update**: A disposed case is `Non-Complied` if `complianceStatus !== "Complied"` AND `complianceRequired === true`. Cases with no compliance required count as Complied (or excluded — choose Complied).
-- **Counter Filed logic**: Already uses `counterFiled === "Yes"`. Keep as-is (interpreted as "at least one counter uploaded").
-- **Department display**: Use primary `department` field — already in place.
-- **Make each department-row count clickable** → links to `/cases?...` with appropriate filter (e.g. `?disposed=Yes&compliance=NonComplied&department=X`).
+### Master / reference
+| Table | Source in code |
+|---|---|
+| `mandals` | `mandals[]` |
+| `divisions` | `divisions{}` |
+| `division_mandals` | join from `divisions{}` |
+| `collectorate_sections` | `collectotateSections[]` |
+| `case_types` | `caseTypes[]` |
+| `courts` | `courtNames[]` |
+| `departments` | `departments[]` |
+| `nature_of_case` | `natureOfCaseOptions[]` |
+| `case_statuses` | `caseStatuses[]` + `DataContext.DEFAULT_STATUSES` |
+| `pending_levels` | `pendingAtLevels[]` |
+| `priorities` | `priorities[]` |
+| `compliance_statuses` | `complianceStatuses[]` |
+| `collectorate_involvement_types` | `collectorateInvolvementTypes[]` |
+| `roles` | `AppRole` union in `src/lib/permissions.ts` |
 
-## 5. CaseList Query Param Support
-Update `src/pages/cases/CaseList.tsx` to read & apply these URL params:
-- `disposed=Yes|No`
-- `counterPending=true` (status !== Closed && counterFiled !== Yes)
-- `counterFiled=true`
-- `compliance=Complied|NonComplied|Pending`
-- `department=<name>`
-- `courtType=<name>`
-- `caseType=<name>`
-- `dateFrom`, `dateTo` (filingDate range)
-- `scope=collector` (no extra filter — district level)
+### Auth
+| Table | Notes |
+|---|---|
+| `users` | id, name, email, phone, password_hash, designation, mandal_id, department_id, active |
+| `user_roles` | `user_id` ↔ `role_id` (many-to-many; roles separate from users per security rule) |
+| `password_resets` | token, expires_at |
 
-Apply on mount via `useSearchParams` and pre-populate visible filters where possible.
+### Core case domain (maps to `CaseRecord`)
+- `cases` — primary scalar columns: `code` (= `id`), `case_number`, `title`, `court_id`, `court_type`, `case_type_id`, `petitioner`, `respondent`, `department_id`, `mandal_id`, `division_id`, `filing_date`, `filing_year`, `assigned_officer_id`, `priority`, `status_id`, `last_hearing`, `next_hearing`, `advocate`, `advocate_contact`, `subject`, `remarks`, `collectorate_involvement`, `nature_of_case_id`, `land_dispute_flag`, `order_passed`, `order_summary`, `compliance_required`, `compliance_status`, `compliance_due_date`, `compliance_completed_date`, `last_updated`, workflow fields (`counter_draft_status`, `gp_approval_status`, `collector_approval_status`, `counter_filing_due_date`, `pending_at_level`, `interim_order_status`, `final_judgment_status`, `final_action_status`), government fields (`sl_no`, `case_year`, `instructions_filed`, `counter_filed`, `sr_number`, `disposed`, `disposal_date`, `disposal_summary`, `closed`, `closed_by`, `closed_at`)
+- `case_tags` — `case_id`, `tag` (replaces `tags[]`)
+- `case_co_respondents` — replaces `coRespondents[]`
+- `case_parties` — type ENUM('petitioner','respondent','co_respondent'), name, party_type, department_id, is_internal_dept, remarks (covers `petitioners`, `respondents`, `coRespondentParties`)
+- `case_approved_counter_docs` (1:1 nullable; mirrors `approvedCounterDoc`)
+- `case_judgment_docs` (1:1 nullable; mirrors `judgmentDoc`)
 
-## 6. Case Status Master (Super Admin + Legal Cell)
-Create new admin page `src/pages/admin/CaseStatusMaster.tsx`:
-- Lists existing statuses (default + custom) with usage count.
-- Add new status (name, color token).
-- Delete only allowed if usage count = 0.
-- All edits write an `auditLog` entry via DataContext.
-- Visible only to roles: `Super Admin`, `Legal Cell` (existing roles in `permissions.ts`).
-- Add route in `App.tsx` and sidebar entry in `AppSidebar.tsx` under Admin section.
+### Workflow children
+- `case_directions` (`DirectionRecord`) — text, issued_by, issued_at, concerned_officer, concerned_department_id, due_date, priority, status
+- `case_actions_taken` (`ActionTakenRecord`) — summary, doc_name, doc_size, uploaded_by, uploaded_at, linked_direction_id (nullable FK)
+- `case_documents` (`CaseDoc`) — name, stage ENUM('Filed','Interim','Counter','Compliance / Action Taken','Judgment','Miscellaneous'), uploaded_by, uploaded_at, size, mime, storage_path
 
-Data layer:
-- Extend `DataContext.tsx` with `caseStatuses: string[]` (seeded from existing statuses) + `addCaseStatus`, `deleteCaseStatus`. Persist to `localStorage` (consistent with existing demo persistence layer).
-- Replace hardcoded status dropdown options in `AddCase.tsx` / `EditCase.tsx` / `CaseList.tsx` filter to consume `caseStatuses` from context.
+### Hearings / appeals / alerts (from `DataContext` interfaces)
+- `hearings` — full `HearingRecord` (case_id FK, date, time, type, officer, status, outcome, remarks, order_passed, order_summary, compliance_required, compliance_status, compliance_due_date, compliance_completed_date, responsible_department_id, responsible_officer, compliance_remarks)
+- `appeals` — `AppealRecord` (parent_case_id FK, appeal_number, court_id, filing_date, grounds, stage, assigned_officer_id, next_hearing, outcome, remarks, attachments_count)
+- `alerts` — `AlertRecord` (type, message, case_id, officer_id, date, priority, status, channel)
 
-## 7. Out of Scope (explicit)
-- No charts / reports module.
-- No mobile optimization of Collector Dashboard.
-- No redesign of Priority/Attention table.
-- No respondent-assignment workflow for counter filing (deferred).
-- No role hierarchy changes; Collector already shows district-level via existing `useRoleFilter`.
+### Audit
+- `audit_log` — global stream (`globalAudit`), columns: ts, actor, role, action, details, case_code (nullable, indexed) — covers both per-case `auditTrail` and the truncated global log
+- View / index by `case_code` to reproduce `CaseRecord.auditTrail` order
 
----
+## Indexes
+- `cases (status_id)`, `cases (next_hearing)`, `cases (mandal_id)`, `cases (department_id)`, `cases (collectorate_involvement)`, `cases (assigned_officer_id)`, `cases (filing_year)`
+- `hearings (case_id, date)`
+- `appeals (parent_case_id)`
+- `audit_log (case_code, ts)`
+- Unique: `cases.code`, `hearings.code`, `appeals.code`, `users.email`, `roles.name`
 
-## Technical Touch Points
-- `src/components/dashboard/CollectorCaseAnalytics.tsx` — add date filter, clickable cards, clickable dept rows, refine compliance logic
-- `src/pages/Dashboard.tsx` — add global `DashboardDateFilter` in header for all roles, lift date state, pass to children
-- `src/components/dashboard/DashboardDateFilter.tsx` (NEW) — reusable date-range filter
-- `src/pages/cases/CaseList.tsx` — honor new query params
-- `src/contexts/DataContext.tsx` — add caseStatuses state + actions
-- `src/pages/admin/CaseStatusMaster.tsx` (NEW)
-- `src/App.tsx` — route
-- `src/components/layout/AppSidebar.tsx` — sidebar link (admin only)
-- `src/lib/permissions.ts` — gate Case Status Master to Super Admin + Legal Cell
+## Mapping doc (`db/schema/README.md`) — shape
 
-## Validation
-- Manual click-through: each summary card and each department count opens correctly filtered CaseList.
-- Date filter applies to summary counts and per-court breakdown.
-- Case Status Master: add → appears in AddCase dropdown; delete blocked when in use.
-- Other dashboards unaffected except for the new date filter strip.
+A single table listing every TS field on `CaseRecord`, `HearingRecord`, `AppealRecord`, `AlertRecord`, `DirectionRecord`, `ActionTakenRecord`, `CaseDoc`, `AuditEntry`, `Party` → MySQL table.column + type + notes (enum vs FK vs JSON). This is the artifact the Laravel team will work from.
+
+## Out of scope (intentionally)
+
+- No Laravel migration files (PHP) — only raw SQL, since this repo has no Laravel code
+- No changes to React code, `DataContext`, or localStorage seeding
+- No Lovable Cloud / Supabase enablement (memory forbids cloud-provider branding)
+- No API layer / data-fetching refactor — that is a separate, larger task
+
+## After approval
+
+On build mode I will create the three files above and nothing else. If you'd instead like me to **also** start replacing the `DataContext` localStorage layer with real API calls, say so and I'll add a Phase 2 plan.
